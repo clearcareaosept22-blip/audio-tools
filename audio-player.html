@@ -373,6 +373,81 @@
     font-weight: 400;
   }
 
+  /* URL input */
+  .url-section {
+    width: 100%;
+    max-width: 420px;
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .url-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-sub);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+
+  .url-divider::before,
+  .url-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .url-input-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .url-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .url-input::placeholder {
+    color: var(--text-sub);
+  }
+
+  .url-input:focus {
+    border-color: var(--accent);
+  }
+
+  .url-load-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 16px;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+  }
+
+  .url-load-btn:active { background: #3a7ae0; }
+
+  .url-hint {
+    font-size: 11px;
+    color: var(--text-sub);
+    line-height: 1.5;
+  }
+
   /* Speed slider (replaces speed-panel grid) */
   .speed-slider-wrap {
     background: var(--surface);
@@ -448,6 +523,19 @@
   <div class="drop-label">ファイルを選択</div>
   <div class="drop-sub">WAV / MP3 対応</div>
   <input type="file" id="file-input" accept=".wav,.mp3,audio/wav,audio/mpeg">
+</div>
+
+<!-- URL input section -->
+<div class="url-section">
+  <div class="url-divider">または URL で読み込む</div>
+  <div class="url-input-row">
+    <input class="url-input" id="url-input" type="url"
+           placeholder="Google Drive / Dropbox の共有URLを貼り付け">
+    <button class="url-load-btn" id="url-load-btn">読み込む</button>
+  </div>
+  <div class="url-hint" id="url-hint">
+    Google Drive: 共有リンクの「表示」→「リンクをコピー」で取得できます
+  </div>
 </div>
 
 <audio id="audio"></audio>
@@ -551,6 +639,56 @@ let sleepEndTime = null;
 let sleepInterval = null;
 let activeSleepBtn = null;
 let isDragging = false;
+
+// ---- URL loading ----
+const urlInput = document.getElementById('url-input');
+const urlLoadBtn = document.getElementById('url-load-btn');
+const urlHint = document.getElementById('url-hint');
+
+function convertToDirectUrl(input) {
+  // Google Drive: /file/d/ID/view → direct download
+  const gdMatch = input.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (gdMatch) {
+    return `https://drive.google.com/uc?export=download&id=${gdMatch[1]}`;
+  }
+  // Dropbox: ?dl=0 → ?dl=1
+  if (input.includes('dropbox.com')) {
+    return input.replace(/[?&]dl=0/, '').replace(/[?&]dl=1/, '') + (input.includes('?') ? '&dl=1' : '?dl=1');
+  }
+  return input;
+}
+
+urlLoadBtn.addEventListener('click', () => {
+  const raw = urlInput.value.trim();
+  if (!raw) return;
+  const url = convertToDirectUrl(raw);
+  urlHint.textContent = '読み込み中...';
+  audio.src = url;
+  audio.load();
+  audio.addEventListener('loadedmetadata', () => {
+    urlHint.textContent = '✅ 読み込み完了';
+    player.classList.add('active');
+    dropZone.classList.add('has-file');
+    dropZone.querySelector('.drop-icon').textContent = '🔗';
+    dropZone.querySelector('.drop-label').textContent = '';
+    dropZone.querySelector('.drop-sub').textContent = '';
+    let nameEl = dropZone.querySelector('.file-name');
+    if (!nameEl) {
+      nameEl = document.createElement('div');
+      nameEl.className = 'file-name';
+      dropZone.appendChild(nameEl);
+    }
+    nameEl.textContent = raw.length > 40 ? raw.slice(0, 40) + '…' : raw;
+    setupMediaSession();
+  }, { once: true });
+  audio.addEventListener('error', () => {
+    urlHint.innerHTML = '❌ 読み込めませんでした。<br>Google Driveの場合は「全員が閲覧可」に設定してください。';
+  }, { once: true });
+});
+
+urlInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') urlLoadBtn.click();
+});
 
 // ---- File handling ----
 dropZone.addEventListener('click', () => fileInput.click());
