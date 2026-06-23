@@ -740,8 +740,8 @@ audio.addEventListener('ended', () => { btnPlay.textContent = '▶'; });
 
 // ---- Seek buttons ----
 document.getElementById('btn-back10').addEventListener('click', () => seek(-10));
-document.getElementById('btn-back5').addEventListener('click', () => seek(-5));
-document.getElementById('btn-fwd5').addEventListener('click', () => seek(5));
+document.getElementById('btn-back5').addEventListener('click', () => seek(-10));
+document.getElementById('btn-fwd5').addEventListener('click', () => seek(10));
 document.getElementById('btn-fwd10').addEventListener('click', () => seek(10));
 
 function seek(delta) {
@@ -904,10 +904,10 @@ function setupMediaSession() {
   const handlers = [
     ['play', () => audio.play()],
     ['pause', () => audio.pause()],
-    ['seekbackward',  () => seek(-5)],
-    ['seekforward',   () => seek(5)],
-    ['previoustrack', () => seek(-5)],
-    ['nexttrack',     () => seek(5)],
+    ['seekbackward',  () => seek(-10)],
+    ['seekforward',   () => seek(10)],
+    ['previoustrack', () => seek(-10)],
+    ['nexttrack',     () => seek(10)],
     ['stop', () => { audio.pause(); audio.currentTime = 0; }],
   ];
 
