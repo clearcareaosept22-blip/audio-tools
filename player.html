@@ -212,8 +212,28 @@ audio.addEventListener('timeupdate',()=>{
 });
 audio.addEventListener('pause',()=>{lastCT=null;localStorage.setItem(TOTAL_KEY,totalSec.toFixed(1));});
 audio.addEventListener('ended',()=>{lastCT=null;localStorage.setItem(TOTAL_KEY,totalSec.toFixed(1));});
-document.getElementById('stats-reset').addEventListener('click',()=>{
-  totalSec=0;localStorage.removeItem(TOTAL_KEY);updateStats();
+const statsResetBtn=document.getElementById('stats-reset');
+let resetPending=false,resetTimer=null;
+statsResetBtn.addEventListener('click',()=>{
+  if(!resetPending){
+    resetPending=true;
+    statsResetBtn.textContent='本当にリセット？';
+    statsResetBtn.style.borderColor='var(--accent)';
+    statsResetBtn.style.color='var(--accent)';
+    resetTimer=setTimeout(()=>{
+      resetPending=false;
+      statsResetBtn.textContent='リセット';
+      statsResetBtn.style.borderColor='';
+      statsResetBtn.style.color='';
+    },3000);
+  } else {
+    clearTimeout(resetTimer);
+    resetPending=false;
+    statsResetBtn.textContent='リセット';
+    statsResetBtn.style.borderColor='';
+    statsResetBtn.style.color='';
+    totalSec=0;localStorage.removeItem(TOTAL_KEY);updateStats();
+  }
 });
 const toast=document.getElementById('toast');
 let saveTimer=null;
