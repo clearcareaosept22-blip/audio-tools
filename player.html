@@ -65,6 +65,13 @@
   .sleep-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
   .sleep-remaining { text-align: center; font-size: 13px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; display: none; }
   .sleep-remaining.visible { display: block; }
+  .stats-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .stats-left { display: flex; flex-direction: column; gap: 3px; }
+  .stats-label { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-sub); }
+  .stats-time { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .stats-laps { font-size: 11px; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+  .stats-reset { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text-sub); font-size: 11px; font-weight: 600; padding: 6px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: border-color .15s, color .15s; }
+  .stats-reset:hover { border-color: var(--accent); color: var(--accent); }
   .toast {
     position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
     background: var(--surface2); border: 1px solid var(--accent);
@@ -141,6 +148,14 @@
     <div class="sleep-grid" id="sleep-grid"></div>
     <div class="sleep-remaining" id="sleep-remaining"></div>
   </div>
+  <div class="stats-box">
+    <div class="stats-left">
+      <div class="stats-label">総再生時間</div>
+      <div class="stats-time" id="stats-time">0分00秒</div>
+      <div class="stats-laps" id="stats-laps">≈ 0.0周</div>
+    </div>
+    <button class="stats-reset" id="stats-reset">リセット</button>
+  </div>
 </div>
 <script>
 const CHAPTERS = [{"t":45.54,"text":"第1章。SAPの試験の考え方。"},{"t":186.638,"text":"第2章。マルチアカウント戦略とガバナンス。"},{"t":531.912,"text":"第3章。ディザスタリカバリ戦略。"},{"t":783.902,"text":"第4章。高度なネットワーキング。"},{"t":1148.605,"text":"第5章。デプロイ戦略とIaC。"},{"t":1318.198,"text":"第6章。データベース移行とモダナイゼーション。"},{"t":1407.924,"text":"第7章。データ移行サービス。"},{"t":1676.697,"text":"第8章。目的別データベースとモダナイゼーション。"},{"t":1904.96,"text":"第9章。コンテナとモダンなコンピューティング。"},{"t":1997.89,"text":"第10章。高度なセキュリティと監査。"},{"t":2278.224,"text":"第11章。コスト最適化戦略。"},{"t":2452.679,"text":"第12章。ストレージの深掘り。"}];
@@ -171,6 +186,35 @@ audio.src=AUDIO_URL;audio.load();
 audio.addEventListener('loadedmetadata',()=>{loadingMsg.style.display='none';player.classList.add('active');setupMediaSession();},{once:true});
 audio.addEventListener('error',()=>{loadingMsg.textContent='❌ 音声の読み込みに失敗しました';},{once:true});
 const STORAGE_KEY='aws_sap_pos';
+const TOTAL_KEY='aws_sap_total';
+const FULL_DURATION=2801.237;
+let totalSec=parseFloat(localStorage.getItem(TOTAL_KEY)||'0');
+let lastCT=null;
+const statsTime=document.getElementById('stats-time');
+const statsLaps=document.getElementById('stats-laps');
+function fmtTotal(s){
+  s=Math.round(s);
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  if(h>0)return h+'時間'+m+'分'+String(sec).padStart(2,'0')+'秒';
+  return m+'分'+String(sec).padStart(2,'0')+'秒';
+}
+function updateStats(){
+  statsTime.textContent=fmtTotal(totalSec);
+  statsLaps.textContent='≈ '+(totalSec/FULL_DURATION).toFixed(1)+'周';
+}
+updateStats();
+audio.addEventListener('play',()=>{lastCT=audio.currentTime;});
+audio.addEventListener('timeupdate',()=>{
+  if(lastCT===null)return;
+  const delta=audio.currentTime-lastCT;
+  if(delta>0&&delta<3){totalSec+=delta;updateStats();}
+  lastCT=audio.currentTime;
+});
+audio.addEventListener('pause',()=>{lastCT=null;localStorage.setItem(TOTAL_KEY,totalSec.toFixed(1));});
+audio.addEventListener('ended',()=>{lastCT=null;localStorage.setItem(TOTAL_KEY,totalSec.toFixed(1));});
+document.getElementById('stats-reset').addEventListener('click',()=>{
+  totalSec=0;localStorage.removeItem(TOTAL_KEY);updateStats();
+});
 const toast=document.getElementById('toast');
 let saveTimer=null;
 
