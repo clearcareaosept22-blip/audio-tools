@@ -389,8 +389,9 @@ function setupMediaSession(){
   audio.addEventListener('timeupdate',up);audio.addEventListener('loadedmetadata',up);
 }
 const CUES_CALC_DURATION=2808.875;
+const AUDIO_REF_DURATION=2801.237;
 function getCueIdx(t){
-  const scaled=audio.duration&&isFinite(audio.duration)?t*(CUES_CALC_DURATION/audio.duration):t;
+  const scaled=t*(CUES_CALC_DURATION/AUDIO_REF_DURATION);
   let lo=0,hi=CUES.length-1,result=-1;
   while(lo<=hi){const mid=(lo+hi)>>1;if(CUES[mid].t<=scaled){result=mid;lo=mid+1;}else hi=mid-1;}
   return result;
