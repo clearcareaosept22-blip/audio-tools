@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>AWS SAP 基礎知識 頻出用語 完全版 | 音声プレイヤー</title>
+<style>
+  :root {
+    --bg: #0f0f13; --surface: #1a1a22; --surface2: #22222e;
+    --accent: #f7934f; --accent-dim: rgba(247,147,79,0.15);
+    --text: #e8e8f0; --text-sub: #7a7a9a; --border: #2a2a38;
+    --radius: 16px; --radius-sm: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Helvetica Neue', Arial, sans-serif; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px 40px; }
+  .header { width: 100%; max-width: 480px; margin-bottom: 8px; }
+  .app-title { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-sub); }
+  .app-subtitle { font-size: 18px; font-weight: 700; color: var(--text); margin-top: 4px; }
+  .app-badge { display: inline-block; background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; padding: 2px 8px; border-radius: 20px; margin-top: 6px; }
+  .drop-zone { width: 100%; max-width: 480px; border: 2px dashed var(--border); border-radius: var(--radius); padding: 28px 24px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; background: var(--surface); display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
+  .drop-zone.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+  .drop-zone.has-file { border-style: solid; border-color: var(--border); border-width: 1px; padding: 8px 14px; flex-direction: row; gap: 8px; justify-content: center; }
+  .drop-icon { font-size: 28px; line-height: 1; }
+  .drop-zone.has-file .drop-icon { font-size: 14px; }
+  .drop-label { font-size: 14px; font-weight: 600; color: var(--text); }
+  .drop-filename { font-size: 11px; font-weight: 500; color: var(--accent); }
+  .drop-sub { font-size: 11px; color: var(--text-sub); }
+  .file-name { font-size: 12px; font-weight: 500; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  #file-input { display: none; }
+  .player { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 16px; margin-top: 16px; opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .player.active { opacity: 1; pointer-events: all; }
+  .lyric-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; min-height: 120px; display: flex; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
+  .lyric-text { font-size: 20px; line-height: 1.7; color: var(--text); font-weight: 700; letter-spacing: .01em; }
+  .lyric-text.placeholder { color: var(--text-sub); font-size: 14px; font-weight: 400; }
+  .progress-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .progress-bar-track { width: 100%; height: 44px; background: transparent; position: relative; cursor: pointer; touch-action: none; display: flex; align-items: center; }
+  .progress-bar-track::before { content: ''; position: absolute; left: 0; right: 0; height: 6px; background: var(--surface2); border-radius: 3px; }
+  .progress-bar-fill { position: absolute; left: 0; height: 6px; background: var(--accent); border-radius: 3px; width: 0%; pointer-events: none; transition: width .08s linear; }
+  .progress-thumb { position: absolute; top: 50%; transform: translate(-50%,-50%); width: 20px; height: 20px; background: var(--accent); border-radius: 50%; left: 0%; pointer-events: none; box-shadow: 0 0 0 4px rgba(247,147,79,.25); transition: left .08s linear; }
+  .progress-bar-track.dragging .progress-thumb { width: 26px; height: 26px; box-shadow: 0 0 0 6px rgba(247,147,79,.3); }
+  .time-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+  .controls-main { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; transition: background .15s; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .btn:active { background: var(--surface2); }
+  .btn-seek { width: 60px; height: 60px; font-size: 18px; }
+  .btn-seek span { font-size: 10px; color: var(--text-sub); font-weight: 600; letter-spacing: .05em; }
+  .btn-play { width: 68px; height: 68px; background: var(--accent); border-color: var(--accent); border-radius: 50%; font-size: 26px; }
+  .btn-play:active { opacity: .85; }
+  .controls-secondary { display: flex; gap: 8px; }
+  .pill { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 6px; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; transition: background .15s, border-color .15s; }
+  .pill.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .pill-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: inherit; }
+  .pill-value { font-size: 14px; font-weight: 700; color: inherit; }
+  .speed-slider-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .speed-slider-header { display: flex; justify-content: space-between; align-items: center; }
+  .speed-slider-label { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-sub); }
+  .speed-slider-value { font-size: 16px; font-weight: 700; color: var(--accent); }
+  input[type=range].speed-range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: linear-gradient(to right, var(--accent) 0%, var(--accent) 33%, var(--surface2) 33%); border-radius: 3px; outline: none; cursor: pointer; }
+  input[type=range].speed-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+  .speed-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-sub); padding: 0 2px; }
+  .chapter-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: none; flex-direction: column; gap: 8px; }
+  .chapter-panel.open { display: flex; }
+  .chapter-panel-header { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-sub); margin-bottom: 2px; }
+  .chapter-list { display: flex; flex-direction: column; gap: 4px; }
+  .chapter-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-size: 13px; font-weight: 500; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; transition: background .15s, border-color .15s; -webkit-tap-highlight-color: transparent; }
+  .chapter-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
+  .chapter-btn.current { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .chapter-time { font-size: 11px; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+  .sleep-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: none; flex-direction: column; gap: 10px; }
+  .sleep-panel.open { display: flex; }
+  .sleep-panel-header { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-sub); }
+  .sleep-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+  .sleep-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 4px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; transition: background .15s, border-color .15s; -webkit-tap-highlight-color: transparent; }
+  .sleep-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .sleep-remaining { text-align: center; font-size: 13px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; display: none; }
+  .sleep-remaining.visible { display: block; }
+  .url-section { width: 100%; max-width: 480px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .url-divider { display: flex; align-items: center; gap: 10px; color: var(--text-sub); font-size: 11px; font-weight: 600; letter-spacing: .08em; }
+  .url-divider::before, .url-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .url-input-row { display: flex; gap: 8px; }
+  .url-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 12px; padding: 9px 12px; outline: none; transition: border-color .2s; }
+  .url-input::placeholder { color: var(--text-sub); }
+  .url-input:focus { border-color: var(--accent); }
+  .url-load-btn { background: var(--accent); border: none; border-radius: var(--radius-sm); color: #fff; font-size: 12px; font-weight: 700; padding: 9px 14px; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; transition: opacity .15s; }
+  .url-load-btn:active { opacity: .8; }
+  .url-hint { font-size: 11px; color: var(--text-sub); line-height: 1.5; }
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    background: var(--surface2); border: 1px solid var(--accent);
+    color: var(--text); font-size: 13px; font-weight: 500;
+    padding: 10px 18px; border-radius: 20px;
+    white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity .3s;
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="app-title">AWS Solution Architect Professional</div>
+  <div class="app-subtitle">基礎知識 頻出用語 完全版</div>
+  <span class="app-badge">SAP-C02 対応 &nbsp;/&nbsp; 47分 &nbsp;/&nbsp; 全12章</span>
+</div>
+<div class="drop-zone" id="drop-zone">
+  <div class="drop-icon">🎧</div>
+  <div class="drop-label">WAVファイルを選択</div>
+  <div class="drop-filename">AWS_SAP_基礎知識_頻出用語_完全版.wav</div>
+  <div class="drop-sub">タップまたはドラッグ＆ドロップ</div>
+  <input type="file" id="file-input" accept=".wav,.mp3,audio/wav,audio/mpeg">
+</div>
+<div class="url-section">
+  <div class="url-divider">または Google Drive URL</div>
+  <div class="url-input-row">
+    <input class="url-input" id="url-input" type="url" placeholder="Google Drive の共有URLを貼り付け">
+    <button class="url-load-btn" id="url-load-btn">読み込む</button>
+  </div>
+  <div class="url-hint" id="url-hint">共有設定を「リンクを知っている全員」＋「閲覧者」に設定してください</div>
+</div>
+<audio id="audio"></audio>
+<div class="toast" id="toast"></div>
+<div class="player" id="player">
+  <div class="lyric-box">
+    <span class="lyric-text placeholder" id="lyric-text">再生すると表示されます</span>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar-track" id="progress-track">
+      <div class="progress-bar-fill" id="progress-fill"></div>
+      <div class="progress-thumb" id="progress-thumb"></div>
+    </div>
+    <div class="time-row"><span id="time-current">0:00</span><span id="time-total">0:00</span></div>
+  </div>
+  <div class="controls-main">
+    <button class="btn btn-seek" id="btn-back10">&#8617; <span>10秒</span></button>
+    <button class="btn btn-seek" id="btn-back5">&#8617; <span>5秒</span></button>
+    <button class="btn btn-play" id="btn-play">&#9654;</button>
+    <button class="btn btn-seek" id="btn-fwd5">&#8618; <span>5秒</span></button>
+    <button class="btn btn-seek" id="btn-fwd10">&#8618; <span>10秒</span></button>
+  </div>
+  <div class="controls-secondary">
+    <div class="pill" id="pill-speed" style="cursor:default">
+      <span class="pill-label">速度</span>
+      <span class="pill-value" id="speed-label">1.0&times;</span>
+    </div>
+    <div class="pill" id="pill-loop">
+      <span class="pill-label">ループ</span>
+      <span class="pill-value">&#128257;</span>
+    </div>
+    <div class="pill" id="pill-chapter">
+      <span class="pill-label">章</span>
+      <span class="pill-value" id="chapter-label">&mdash;</span>
+    </div>
+    <div class="pill" id="pill-sleep">
+      <span class="pill-label">タイマー</span>
+      <span class="pill-value">&#128164;</span>
+    </div>
+  </div>
+  <div class="speed-slider-wrap">
+    <div class="speed-slider-header">
+      <span class="speed-slider-label">再生速度</span>
+      <span class="speed-slider-value" id="speed-slider-val">1.0&times;</span>
+    </div>
+    <input type="range" class="speed-range" id="speed-range" min="0" max="8" step="1" value="2">
+    <div class="speed-ticks">
+      <span>0.5&times;</span><span>0.75&times;</span><span>1&times;</span><span>1.25&times;</span><span>1.5&times;</span><span>1.75&times;</span><span>2&times;</span><span>2.5&times;</span><span>3&times;</span>
+    </div>
+  </div>
+  <div class="chapter-panel" id="chapter-panel">
+    <div class="chapter-panel-header">チャプター一覧</div>
+    <div class="chapter-list" id="chapter-list"></div>
+  </div>
+  <div class="sleep-panel" id="sleep-panel">
+    <div class="sleep-panel-header">スリープタイマー</div>
+    <div class="sleep-grid" id="sleep-grid"></div>
+    <div class="sleep-remaining" id="sleep-remaining"></div>
+  </div>
+</div>
+<script>
+const CHAPTERS = [{"t":45.54,"text":"第1章。SAPの試験の考え方。"},{"t":186.638,"text":"第2章。マルチアカウント戦略とガバナンス。"},{"t":531.912,"text":"第3章。ディザスタリカバリ戦略。"},{"t":783.902,"text":"第4章。高度なネットワーキング。"},{"t":1148.605,"text":"第5章。デプロイ戦略とIaC。"},{"t":1318.198,"text":"第6章。データベース移行とモダナイゼーション。"},{"t":1407.924,"text":"第7章。データ移行サービス。"},{"t":1676.697,"text":"第8章。目的別データベースとモダナイゼーション。"},{"t":1904.96,"text":"第9章。コンテナとモダンなコンピューティング。"},{"t":1997.89,"text":"第10章。高度なセキュリティと監査。"},{"t":2278.224,"text":"第11章。コスト最適化戦略。"},{"t":2452.679,"text":"第12章。ストレージの深掘り。"}];
+const CUES = [{"t":0.0,"text":""},{"t":0.2,"text":"ずんだもんの、AWS SAP基礎知識、頻出用語・完全版なのだ！"},{"t":7.479,"text":""},{"t":7.679,"text":"こんにちはなのだ！"},{"t":9.163,"text":"ずんだもんなのだ！"},{"t":10.609,"text":"今日は、AWSソリューションアーキテクト・プロフェッショナルの重要概念を、"},{"t":17.086,"text":"完全網羅で攻略するのだ！"},{"t":19.571,"text":"SAPは、SAAの知識を土台にして、"},{"t":23.624,"text":"「複雑な組織」「移行」「ディザスタリカバリ」「コスト戦略」を"},{"t":29.809,"text":"深掘りする試験なのだ。"},{"t":31.754,"text":"単なるサービスの暗記じゃなくて、"},{"t":34.297,"text":"「なぜそれを選ぶのか」という判断力が問われるのが、SAPの怖いところなのだ！"},{"t":41.092,"text":"それじゃあ、合格目指して、スタートなのだー！"},{"t":44.94,"text":""},{"t":45.14,"text":""},{"t":45.34,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":45.54,"text":"第1章。SAPの試験の考え方。"},{"t":49.443,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":49.643,"text":""},{"t":49.843,"text":"まず最初に、SAPというテストそのものの性質を理解するのだ。"},{"t":55.449,"text":"ここを間違えると、知識があっても間違えるのだ！"},{"t":59.571,"text":""},{"t":59.771,"text":"【SAPの4つの分野】"},{"t":62.029,"text":""},{"t":62.229,"text":"出題範囲は4つの分野に分かれているのだ。"},{"t":65.834,"text":"「複雑な組織に対応するソリューションの設計」が26パーセント。"},{"t":71.567,"text":"「新しいソリューションのための設計」が29パーセント。"},{"t":76.391,"text":"「既存のソリューションの継続的な改善」が25パーセント。"},{"t":81.532,"text":"「ワークロードの移行とモダナイゼーションの加速」が20パーセントなのだ。"},{"t":87.018,"text":"つまり、新規設計と既存改善と移行が、ほぼ均等に出るということなのだ！"},{"t":93.626,"text":""},{"t":93.826,"text":"【SAPの選択肢の選び方】"},{"t":96.604,"text":""},{"t":96.804,"text":"SAPの問題は、選択肢が4つとも「技術的には動く」ことが多いのだ。"},{"t":103.896,"text":"SAAなら明らかに間違った選択肢が混ざっているけれど、"},{"t":108.588,"text":"SAPは全部正しく見えるのだ。"},{"t":111.51,"text":"だから「最も運用の手間が少ない」「最もコストが低い」"},{"t":116.536,"text":"「最も回復性が高い」といった問題文の条件を、"},{"t":121.254,"text":"一言一句見逃さず読むことが合格のカギなのだ！"},{"t":125.23,"text":"迷ったら、AWSが管理してくれる「マネージドサービス」を選ぶのだ。"},{"t":131.947,"text":"自分で運用するより、AWSに任せる方が正解になりやすいのだー！"},{"t":138.231,"text":"ただし移行の問題は別なのだ。"},{"t":140.884,"text":"「既存資産をそのまま活かしたい」"},{"t":143.283,"text":"「ライセンス制約や短納期がある」場合は、"},{"t":147.104,"text":"作り直しよりEC2やMGNでの移行が正解になることもあるから、"},{"t":152.879,"text":"問題文の優先順位をよく見るのだー！"},{"t":156.051,"text":""},{"t":156.251,"text":"【Well-Architectedフレームワークが判断基準】"},{"t":160.408,"text":""},{"t":160.608,"text":"SAPの正解は、常にWell-Architectedフレームワークの"},{"t":166.361,"text":"6つの柱に沿っているのだ。"},{"t":168.702,"text":"「運用上の優秀性」「セキュリティ」「信頼性」"},{"t":173.102,"text":"「パフォーマンス効率」「コスト最適化」「持続可能性」なのだ。"},{"t":178.679,"text":"迷ったときは、この6つのどれを一番重視すべき問題なのかを"},{"t":183.92,"text":"考えるのがコツなのだー！"},{"t":186.038,"text":""},{"t":186.238,"text":""},{"t":186.438,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":186.638,"text":"第2章。マルチアカウント戦略とガバナンス。"},{"t":190.457,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":190.657,"text":""},{"t":190.857,"text":"SAPで一番差がつくのが、この章なのだ。"},{"t":194.787,"text":"「複雑な組織」を扱えるかどうかが問われるのだ！"},{"t":199.022,"text":""},{"t":199.222,"text":"【AWS Organizations】"},{"t":201.716,"text":""},{"t":201.916,"text":"複数のAWSアカウントを、1つの組織としてまとめて管理する機能なのだ。"},{"t":208.431,"text":"SAAでは軽く触れる程度だったけど、SAPでは主役級の重要度なのだ。"},{"t":215.127,"text":"請求を一本化できる「統合請求」機能があって、"},{"t":220.038,"text":"使うほど割引が大きくなるボリュームディスカウントも、"},{"t":224.02,"text":"組織全体で合算されるのだー！"},{"t":226.722,"text":""},{"t":226.922,"text":"【OU。組織単位。】"},{"t":229.025,"text":""},{"t":229.225,"text":"Organizationsの中で、アカウントをグループ分けする「部署」のような概念なのだ。"},{"t":236.288,"text":"本番環境用のOU、開発環境用のOUというふうに分けて、"},{"t":242.184,"text":"それぞれに異なるルールを適用するのだ。"},{"t":245.355,"text":""},{"t":245.555,"text":"【SCP。サービスコントロールポリシー。】"},{"t":249.222,"text":""},{"t":249.422,"text":"OUやアカウント単位で「絶対にやらせないこと」を定める、"},{"t":254.722,"text":"組織全体のガードレールなのだ。"},{"t":257.345,"text":"IAMポリシーが「何を許可するか」なのに対して、"},{"t":261.937,"text":"SCPは「どんなに強い権限を持っていても、これだけは禁止する」という"},{"t":268.574,"text":"上限を設定する仕組みなのだ。"},{"t":271.128,"text":"たとえば「特定リージョン以外でのリソース作成を禁止する」"},{"t":275.996,"text":"「rootユーザーの操作を禁止する」といった使い方をするのだ。"},{"t":280.94,"text":"SAPでは「複数アカウントに一律のセキュリティ制限をかけたい」"},{"t":286.528,"text":"という問題の正解が、SCPになるのだー！"},{"t":290.616,"text":""},{"t":290.816,"text":"【SCPの評価ロジック。超重要なのだ！】"},{"t":294.746,"text":""},{"t":294.946,"text":"ここがSAPで必ず問われる、ひっかけポイントなのだ。"},{"t":299.7,"text":"SCPは組織の階層構造、"},{"t":302.596,"text":"つまりルート組織、OU、アカウントという親子関係に沿って、"},{"t":308.036,"text":"上から下へ適用されるのだ。"},{"t":310.459,"text":"親OUで拒否（Deny）したアクションは、"},{"t":314.253,"text":"その配下にある子OUやアカウントで、"},{"t":317.31,"text":"どれだけIAMポリシーが許可（Allow）を出していても、"},{"t":321.93,"text":"絶対に実行できないのだ！"},{"t":324.25,"text":"SCPは「許可を追加する」仕組みではなく、"},{"t":328.527,"text":"「使える権限の天井を決める」仕組みだと覚えるのだ。"},{"t":333.057,"text":"IAMポリシーで許可されていて、かつSCPでも許可されている、"},{"t":338.372,"text":"この両方が揃って初めて操作できるのだ。"},{"t":341.801,"text":"SAPでは「IAMで許可しているのに操作できない」という問題の原因が、"},{"t":348.404,"text":"親OUのSCPによる拒否だった、というパターンが頻出なのだー！"},{"t":354.052,"text":""},{"t":354.252,"text":"【権限の評価順序。もう一段深く。】"},{"t":357.799,"text":""},{"t":357.999,"text":"「なぜアクセスできないのか」を解析する問題では、"},{"t":362.099,"text":"評価の順番全体を知る必要があるのだ。"},{"t":365.636,"text":"明示的な拒否（Deny）が最優先で勝ち、"},{"t":369.972,"text":"次にSCPが権限の天井を決め、"},{"t":373.368,"text":"さらにIAMロールに「Permission Boundary」、"},{"t":377.261,"text":"つまり持てる権限の上限が設定されていれば、それも効くのだ。"},{"t":382.474,"text":"最後に通常のIAMポリシーの許可が必要で、"},{"t":386.645,"text":"すべてを通過して初めて操作できるのだ。"},{"t":389.921,"text":"「Deny＞SCP＞Permission Boundary＞IAMポリシー」"},{"t":395.851,"text":"の順で絞られるとイメージするのだー！"},{"t":398.725,"text":""},{"t":398.925,"text":"【AWS Control Tower】"},{"t":401.507,"text":""},{"t":401.707,"text":"Organizationsをベースに、マルチアカウント環境を"},{"t":406.131,"text":"ベストプラクティスに沿って自動構築してくれるサービスなのだ。"},{"t":410.55,"text":"「ランディングゾーン」と呼ばれる、安全な土台を"},{"t":414.687,"text":"数クリックでセットアップできるのだ。"},{"t":417.412,"text":"新しいアカウントを追加するときも、"},{"t":420.324,"text":"決められたルールやガードレールを自動で適用してくれるのだ。"},{"t":424.673,"text":"SAPでは「複数アカウントの統治を自動化したい」という問題で"},{"t":430.708,"text":"Control Towerが正解になるのだー！"},{"t":433.701,"text":""},{"t":433.901,"text":"【AWS RAM。Resource Access Manager。】"},{"t":438.541,"text":""},{"t":438.741,"text":"あるアカウントで作ったリソースを、"},{"t":441.31,"text":"別のアカウントと共有するためのサービスなのだ。"},{"t":445.045,"text":"VPCのサブネットやTransit Gatewayなどを、"},{"t":448.995,"text":"アカウントごとに作り直さずに共有できるのだ。"},{"t":452.746,"text":"SAPでは「複数アカウントでリソースを共有してコストと手間を削減したい」"},{"t":459.131,"text":"という問題の正解がRAMになるのだー！"},{"t":462.839,"text":""},{"t":463.039,"text":"【IAM Identity Center】"},{"t":465.209,"text":""},{"t":465.409,"text":"複数のAWSアカウントへのログインを、"},{"t":469.01,"text":"1つの認証情報で一元管理できるサービスなのだ。"},{"t":473.314,"text":"昔はAWS SSOという名前だったのだ。"},{"t":477.543,"text":"社員ごとにアカウントを作らず、"},{"t":480.152,"text":"1つのID基盤から全アカウントにシングルサインオンできるようにするのだ。"},{"t":485.655,"text":"外部のID基盤、たとえばMicrosoft Entra IDなどとも連携できるのだー！"},{"t":492.281,"text":""},{"t":492.481,"text":"【クロスアカウントアクセスとIAMロール】"},{"t":495.688,"text":""},{"t":495.888,"text":"別のAWSアカウントのリソースにアクセスしたいとき、"},{"t":500.383,"text":"IAMユーザーを増やすのではなく、"},{"t":503.321,"text":"「相手のアカウントに信頼してもらったロール」に一時的になりすます、"},{"t":508.599,"text":"IAMロールのスイッチという仕組みを使うのだ。"},{"t":512.307,"text":"STS（Security Token Service）が、一時的な認証情報を発行してくれるのだ。"},{"t":520.549,"text":"SAPでは「複数アカウント間で安全にアクセスさせたい」という問題の"},{"t":527.106,"text":"正解が、クロスアカウントIAMロールになるのだー！"},{"t":531.312,"text":""},{"t":531.512,"text":""},{"t":531.712,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":531.912,"text":"第3章。ディザスタリカバリ戦略。"},{"t":535.044,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":535.244,"text":""},{"t":535.444,"text":"SAPの花形分野なのだ！"},{"t":538.096,"text":"「もし災害でリージョンが丸ごと使えなくなったら」を"},{"t":542.506,"text":"常に想定して設計するのが、プロフェッショナルの仕事なのだ。"},{"t":547.441,"text":""},{"t":547.641,"text":"【RTOとRPO】"},{"t":549.94,"text":""},{"t":550.14,"text":"まずこの2つの言葉を絶対に区別できるようにするのだ。"},{"t":554.533,"text":"RTOは「目標復旧時間」。"},{"t":557.75,"text":"障害が起きてから、どれだけの時間でシステムを復旧させるか、"},{"t":562.754,"text":"その許容時間なのだ。"},{"t":564.665,"text":"RPOは「目標復旧時点」。"},{"t":567.888,"text":"障害が起きたとき、どれだけ過去のデータまで"},{"t":571.638,"text":"遡ることを許容するか、というデータ損失の許容範囲なのだ。"},{"t":577.072,"text":"RTOは「時間」、RPOは「データの鮮度」と覚えるのだー！"},{"t":583.672,"text":""},{"t":583.872,"text":"【4つのディザスタリカバリ戦略】"},{"t":586.372,"text":""},{"t":586.572,"text":"コストと復旧速度のトレードオフで、4段階の戦略があるのだ。"},{"t":592.019,"text":"安い順に並べるのだ。"},{"t":593.982,"text":""},{"t":594.182,"text":"1つ目、「バックアップと復元」。"},{"t":596.94,"text":"定期的にバックアップを取るだけで、"},{"t":599.698,"text":"災害時はゼロから環境を作り直すのだ。"},{"t":603.232,"text":"一番安いけど、RTOもRPOも一番長くなるのだ。"},{"t":608.803,"text":""},{"t":609.003,"text":"2つ目、「パイロットライト」。"},{"t":611.38,"text":"最小限のコアシステム、たとえばデータベースだけは"},{"t":615.724,"text":"待機系リージョンで常に動かしておくのだ。"},{"t":619.047,"text":"災害時は残りのコンポーネントを急いで起動するのだ。"},{"t":623.315,"text":"火種を残しておいて、必要な時に一気に燃え上がらせるイメージなのだ！"},{"t":628.911,"text":""},{"t":629.111,"text":"3つ目、「ウォームスタンバイ」。"},{"t":631.459,"text":"待機系リージョンに、縮小版でいいから"},{"t":635.01,"text":"システム全体を常時稼働させておくのだ。"},{"t":638.371,"text":"災害時はスケールアップするだけで済むから、"},{"t":641.634,"text":"パイロットライトより早く復旧できるのだ。"},{"t":644.922,"text":""},{"t":645.122,"text":"4つ目、「マルチサイト」。"},{"t":647.271,"text":"本番と全く同じ規模のシステムを、"},{"t":650.231,"text":"複数リージョンで常時フル稼働させるのだ。"},{"t":653.501,"text":"一番高いけど、RTOもRPOもほぼゼロにできるのだ。"},{"t":658.961,"text":"SAPでは、予算とRTOの要件を天秤にかけて、"},{"t":664.095,"text":"どの戦略が最適かを選ばせる問題が頻出なのだー！"},{"t":668.485,"text":""},{"t":668.685,"text":"【AWS Elastic Disaster Recovery。DRS。】"},{"t":673.649,"text":""},{"t":673.849,"text":"オンプレミスや他のクラウドのサーバーを、"},{"t":676.7,"text":"継続的にAWSへレプリケーションしておき、"},{"t":680.718,"text":"災害時に数分でAWS上に復旧できるサービスなのだ。"},{"t":685.853,"text":"ウォームスタンバイをほぼ自動化してくれるサービスだと思えばいいのだ。"},{"t":690.613,"text":"SAPでは「オンプレミスのディザスタリカバリ先としてAWSを使いたい」"},{"t":697.055,"text":"という問題の正解になるのだー！"},{"t":699.743,"text":""},{"t":699.943,"text":"【マルチリージョンのデータレプリケーション】"},{"t":702.643,"text":""},{"t":702.843,"text":"DR戦略を支える、データの複製方法も重要なのだ。"},{"t":708.266,"text":"S3はクロスリージョンレプリケーションで、"},{"t":711.413,"text":"別リージョンのバケットに自動コピーできるのだ。"},{"t":714.851,"text":"RDSやAuroraはリードレプリカを別リージョンに置ける他、"},{"t":719.568,"text":"Auroraには「Aurora Global Database」という"},{"t":723.981,"text":"専用の仕組みがあるのだ。"},{"t":726.069,"text":"これは1秒未満のレイテンシーで複数リージョンにレプリケーションできて、"},{"t":731.294,"text":"メインリージョンが落ちたら別リージョンに昇格させられるのだ。"},{"t":735.607,"text":"RPOは1秒未満、RTOは1分未満という非常に高い水準を実現できるのだ。"},{"t":743.493,"text":"DynamoDBは「グローバルテーブル」という機能で、"},{"t":748.056,"text":"複数リージョン間を双方向で自動同期できるのだー！"},{"t":752.255,"text":""},{"t":752.455,"text":"【Auroraをもう少し深掘り】"},{"t":754.604,"text":""},{"t":754.804,"text":"Auroraには、書き込み用の「クラスターエンドポイント」と、"},{"t":759.96,"text":"読み取り専用の「リーダーエンドポイント」があるのだ。"},{"t":764.609,"text":"リーダーエンドポイントに向ければ、"},{"t":767.059,"text":"複数のリードレプリカに自動で負荷分散されるから、"},{"t":771.051,"text":"「読み取り負荷を分散したい」という問題の定番解法なのだ。"},{"t":776.053,"text":"アクセス量に応じたリードレプリカの自動増減、"},{"t":779.747,"text":"「Auto Scaling」の設定もできるのだー！"},{"t":783.302,"text":""},{"t":783.502,"text":""},{"t":783.702,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":783.902,"text":"第4章。高度なネットワーキング。"},{"t":786.935,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":787.135,"text":""},{"t":787.335,"text":"SAAで学んだVPCの知識をベースに、"},{"t":791.178,"text":"もっと大規模で複雑な構成を扱うのだ。"},{"t":794.743,"text":""},{"t":794.943,"text":"【Transit Gatewayの深掘り】"},{"t":797.43,"text":""},{"t":797.63,"text":"SAAでは「多数のVPCの接続に便利」くらいだったけど、"},{"t":803.565,"text":"SAPでは「ルートテーブルの分離」まで問われるのだ。"},{"t":808.519,"text":"Transit Gateway自体にもルートテーブルがあって、"},{"t":812.393,"text":"部署ごとにVPCを接続しても、"},{"t":815.384,"text":"このVPCとあのVPCは通信させない、という"},{"t":820.121,"text":"セグメンテーションを作れるのだ。"},{"t":822.529,"text":"オンプレミスとの接続もTransit Gateway経由に集約できて、"},{"t":827.604,"text":"Direct ConnectのゲートウェイともつなげられるSAPでは"},{"t":832.123,"text":"複雑な組織のネットワーク設計で必ず登場するのだー！"},{"t":836.866,"text":"ここで注意なのが、"},{"t":838.436,"text":"Direct ConnectをTransit Gatewayに直結するには、"},{"t":842.744,"text":"普段VPCに使う「プライベートVIF」ではダメで、"},{"t":848.212,"text":"専用の「トランジットVIF」と"},{"t":851.964,"text":"「Direct Connectゲートウェイ」の組み合わせが必要なのだ。"},{"t":856.597,"text":"「VPC直結はプライベートVIF、"},{"t":859.999,"text":"Transit Gateway経由はトランジットVIF」"},{"t":863.918,"text":"とセットで覚えるのだー！"},{"t":865.896,"text":""},{"t":866.096,"text":"【AWS PrivateLink】"},{"t":868.655,"text":""},{"t":868.855,"text":"VPCエンドポイントをさらに発展させた仕組みで、"},{"t":872.98,"text":"自分のVPC内のサービスを、"},{"t":875.727,"text":"他のVPCやAWSアカウントに対して、"},{"t":879.69,"text":"インターネットを経由せずプライベートに公開できる機能なのだ。"},{"t":884.374,"text":"SaaSベンダーが自社サービスを顧客のVPCに安全に提供する時などに使うのだ。"},{"t":891.138,"text":"VPCピアリングと違って、"},{"t":893.701,"text":"IPアドレス帯域が重複していても使える利点があるのだ。"},{"t":898.485,"text":"SAPでは「VPC間でIPが重複しているけどサービスを共有したい」"},{"t":905.091,"text":"という問題の正解がPrivateLinkになるのだー！"},{"t":909.054,"text":""},{"t":909.254,"text":"【AWS Global Accelerator】"},{"t":912.339,"text":""},{"t":912.539,"text":"ユーザーからのアクセスを、"},{"t":914.491,"text":"AWSのグローバルネットワークを経由させることで、"},{"t":918.888,"text":"インターネットを通るより高速かつ安定して"},{"t":922.489,"text":"最適なリージョンへ振り分けるサービスなのだ。"},{"t":925.829,"text":"CloudFrontは静的コンテンツやHTTPのキャッシュに強いけど、"},{"t":931.282,"text":"Global Acceleratorは非HTTPの通信、"},{"t":935.425,"text":"TCPやUDPのアプリケーションを高速化するのに向いているのだ。"},{"t":940.866,"text":"SAPでは「複数リージョンのアプリケーションを、"},{"t":944.967,"text":"低レイテンシーかつ高可用性でルーティングしたい」"},{"t":948.705,"text":"という問題の正解になるのだー！"},{"t":951.392,"text":""},{"t":951.592,"text":"【Route 53のルーティングポリシー】"},{"t":954.819,"text":""},{"t":955.019,"text":"SAAでは「フェイルオーバー」だけだったけど、"},{"t":959.15,"text":"SAPでは全種類が問われるのだ。"},{"t":962.188,"text":"「シンプルルーティング」は1つの宛先だけ返す基本形。"},{"t":966.915,"text":"「加重ルーティング」は決めた比率でトラフィックを振り分ける、"},{"t":971.416,"text":"カナリアリリースなどに使うのだ。"},{"t":973.93,"text":"「レイテンシールーティング」はユーザーから見て"},{"t":977.456,"text":"一番低遅延なリージョンへ誘導するのだ。"},{"t":980.817,"text":"「位置情報ルーティング」はユーザーの地理的な場所によって"},{"t":985.482,"text":"届け先を変えるのだ。"},{"t":987.398,"text":"「地理的近接ルーティング」は、"},{"t":990.277,"text":"バイアス値で意図的にトラフィックの配分を調整できるのだ。"},{"t":994.727,"text":"「フェイルオーバールーティング」は、"},{"t":997.413,"text":"プライマリが落ちたらセカンダリに自動切り替えするのだ。"},{"t":1001.385,"text":"SAPでは、要件文を読んで、"},{"t":1004.546,"text":"どのポリシーが最適かを選ぶ問題が頻出なのだー！"},{"t":1008.699,"text":""},{"t":1008.899,"text":"【Direct Connectの冗長化】"},{"t":1011.292,"text":""},{"t":1011.492,"text":"SAPでは「オンプレとAWSをつなぐ専用線が切れたらどうするか」"},{"t":1017.875,"text":"という、障害耐性の設計が頻出なのだ。"},{"t":1021.815,"text":"Direct Connectは物理回線だから、"},{"t":1024.825,"text":"1本だけだと、その回線が切れた瞬間に通信が完全に止まるのだ。"},{"t":1030.692,"text":""},{"t":1030.892,"text":"最高レベルの冗長性がほしいなら、"},{"t":1033.953,"text":"別々のロケーションを経由する"},{"t":1036.51,"text":"2本のDirect Connectを引く「DXの2本足」構成が正解なのだ。"},{"t":1043.075,"text":"片方が切れても、もう片方で通信を維持できるのだ。"},{"t":1047.46,"text":"どちらをメインにするかは、"},{"t":1049.398,"text":"BGPという経路制御の仕組みで、"},{"t":1052.468,"text":"片方の経路をわざと「遠回り」に見せて優先度を下げる"},{"t":1057.738,"text":"「AS Path Prepending」というテクニックで制御するのだー！"},{"t":1062.527,"text":""},{"t":1062.727,"text":"コストを抑えつつバックアップを持ちたいなら、"},{"t":1065.938,"text":"メインをDirect Connect、"},{"t":1068.014,"text":"バックアップをAWS Site-to-Site VPNにする構成が定番なのだ。"},{"t":1075.399,"text":"VPNはインターネット経由だから帯域や速度は劣るけれど、"},{"t":1080.474,"text":"安価に「もしもの時の避難経路」を用意できるのだ。"},{"t":1085.194,"text":""},{"t":1085.394,"text":"そして、これら複数の接続をTransit Gatewayに束ねることで、"},{"t":1090.807,"text":"経路の切り替えも一元管理できるのだ。"},{"t":1094.036,"text":"SAPでは「専用線の単一障害点をなくしたい」という問題文が出たら、"},{"t":1100.862,"text":"予算に応じてDX2本足か、DX＋VPNかを選ぶのが正解になるのだー！"},{"t":1108.606,"text":""},{"t":1108.806,"text":"【ハイブリッドDNS】"},{"t":1110.738,"text":""},{"t":1110.938,"text":"オンプレミスのDNSサーバーと、"},{"t":1113.678,"text":"Route 53のプライベートホストゾーンを連携させる仕組みなのだ。"},{"t":1119.144,"text":"Route 53 Resolverには「インバウンドエンドポイント」と"},{"t":1125.418,"text":"「アウトバウンドエンドポイント」があって、"},{"t":1128.758,"text":"オンプレミスからAWSへの名前解決、"},{"t":1132.403,"text":"AWSからオンプレミスへの名前解決を、"},{"t":1136.126,"text":"それぞれ橋渡しできるのだ。"},{"t":1138.417,"text":"SAPでは「オンプレミスとAWSの両方でDNSを統合管理したい」"},{"t":1145.317,"text":"という問題の正解になるのだー！"},{"t":1148.005,"text":""},{"t":1148.205,"text":""},{"t":1148.405,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1148.605,"text":"第5章。デプロイ戦略とIaC。"},{"t":1151.966,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1152.166,"text":""},{"t":1152.366,"text":"新しいバージョンを本番環境に、"},{"t":1155.178,"text":"いかに安全に届けるかという話なのだ。"},{"t":1158.395,"text":""},{"t":1158.595,"text":"【AWS CloudFormation】"},{"t":1161.232,"text":""},{"t":1161.432,"text":"インフラの構成をコードで定義して、"},{"t":1164.302,"text":"自動で環境を構築・更新・削除できるサービスなのだ。"},{"t":1169.522,"text":"「Infrastructure as Code」の中心的存在なのだ。"},{"t":1174.102,"text":"テンプレートをそのまま別リージョンや別アカウントにコピーすれば、"},{"t":1178.819,"text":"全く同じ環境を再現できるのだ。"},{"t":1181.955,"text":"SAPでは「環境構築を再現可能な形で自動化したい」という問題の"},{"t":1188.93,"text":"正解がCloudFormationになるのだー！"},{"t":1192.056,"text":"またネストされたスタックや、"},{"t":1194.175,"text":"スタックセットを使って複数アカウントに一括デプロイする問題も出るのだ。"},{"t":1199.794,"text":""},{"t":1199.994,"text":"【4つのデプロイ戦略】"},{"t":1201.894,"text":""},{"t":1202.094,"text":"新バージョンのリリース方法にはパターンがあるのだ。"},{"t":1205.895,"text":""},{"t":1206.095,"text":"「インプレース、一括デプロイ」は、"},{"t":1209.796,"text":"全サーバーを一斉に新バージョンへ切り替えるのだ。"},{"t":1213.588,"text":"一番早いけど、ダウンタイムが発生するし、"},{"t":1217.494,"text":"失敗したら全部が影響を受けるのだ。"},{"t":1220.607,"text":""},{"t":1220.807,"text":"「ローリングデプロイ」は、"},{"t":1223.174,"text":"サーバーを少しずつ順番に新バージョンへ入れ替えていくのだ。"},{"t":1227.666,"text":"ダウンタイムはないけど、"},{"t":1229.512,"text":"新旧バージョンが一時的に混在するのだ。"},{"t":1232.967,"text":""},{"t":1233.167,"text":"「ブルーグリーンデプロイ」は、"},{"t":1235.795,"text":"新バージョンの環境をまるごと別に用意して、"},{"t":1239.332,"text":"ロードバランサーやDNSの向き先を、"},{"t":1242.459,"text":"一瞬で新環境に切り替えるのだ。"},{"t":1245.334,"text":"問題が起きたら、瞬時に旧環境へ戻せるのが最大の強みなのだ！"},{"t":1251.068,"text":""},{"t":1251.268,"text":"「カナリアデプロイ」は、"},{"t":1253.57,"text":"まず一部のユーザーだけに新バージョンを見せて様子を見て、"},{"t":1257.842,"text":"問題なければ徐々に対象を広げていくのだ。"},{"t":1261.363,"text":"SAPでは「即座にロールバックできる安全なデプロイをしたい」"},{"t":1266.49,"text":"という問題の正解がブルーグリーンになるのだー！"},{"t":1270.189,"text":""},{"t":1270.389,"text":"【AWS Systems Manager】"},{"t":1273.168,"text":""},{"t":1273.368,"text":"サーバー群への操作を、一元的に自動化できるサービスなのだ。"},{"t":1278.591,"text":"「Run Command」でSSH接続せずに複数サーバーへ"},{"t":1283.611,"text":"コマンドを一斉実行できるのだ。"},{"t":1286.295,"text":"「パッチマネージャー」でOSのパッチ適用を自動化できるのだ。"},{"t":1291.229,"text":"「パラメータストア」で設定値を一元管理できるのだ。"},{"t":1295.663,"text":"「Session Manager」を使えば、"},{"t":1298.423,"text":"SSHのポートを一切開けずに安全にサーバーへログインできるのだ。"},{"t":1303.893,"text":"SAPでは「大量のEC2への一括操作」「パッチ適用の自動化」"},{"t":1310.388,"text":"「SSHポートを開けたくない」という問題の正解が"},{"t":1315.068,"text":"Systems Managerになるのだー！"},{"t":1317.598,"text":""},{"t":1317.798,"text":""},{"t":1317.998,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1318.198,"text":"第6章。データベース移行とモダナイゼーション。"},{"t":1322.098,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1322.298,"text":""},{"t":1322.498,"text":"SAPで新しく重要になる、移行専門のサービス群なのだ。"},{"t":1328.019,"text":""},{"t":1328.219,"text":"【AWS DMS。Database Migration Service。】"},{"t":1333.266,"text":""},{"t":1333.466,"text":"稼働中のデータベースを、"},{"t":1335.565,"text":"ほぼダウンタイムなしで別のデータベースへ移行できるサービスなのだ。"},{"t":1340.413,"text":"移行中もソースDBは動かし続けられて、"},{"t":1343.961,"text":"継続的にレプリケーションしながら、"},{"t":1346.725,"text":"最後に切り替えるだけで済むのだ。"},{"t":1349.313,"text":"同じ種類のDB同士でも、違う種類のDB同士でも移行できるのだー！"},{"t":1355.417,"text":""},{"t":1355.617,"text":"【AWS SCT。Schema Conversion Tool。】"},{"t":1360.082,"text":""},{"t":1360.282,"text":"Oracleのデータベースを PostgreSQLに変える、といった、"},{"t":1365.657,"text":"違う種類のデータベースエンジン間で、"},{"t":1368.678,"text":"スキーマやコードを自動変換してくれるツールなのだ。"},{"t":1372.529,"text":"DMSがデータの中身を移すのに対して、"},{"t":1376.085,"text":"SCTは器となるスキーマや、"},{"t":1378.914,"text":"ストアドプロシージャの構造を変換するのだ。"},{"t":1382.312,"text":"ただし、SCTは100パーセント自動変換できるわけではなく、"},{"t":1387.709,"text":"複雑なストアドプロシージャは「要手動対応」として残るから、"},{"t":1393.047,"text":"手動修正の工数も見込んで計画するのがコツなのだ。"},{"t":1397.473,"text":"SAPでは「異種データベース間の移行」という問題で、"},{"t":1402.592,"text":"SCTとDMSをセットで使うのが正解になるのだー！"},{"t":1407.324,"text":""},{"t":1407.524,"text":""},{"t":1407.724,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1407.924,"text":"第7章。データ移行サービス。"},{"t":1410.838,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1411.038,"text":""},{"t":1411.238,"text":"大量のファイルやシステムを、"},{"t":1413.431,"text":"オンプレミスからAWSへ運ぶ方法を使い分けるのだ。"},{"t":1418.156,"text":""},{"t":1418.356,"text":"【AWS DataSync】"},{"t":1420.569,"text":""},{"t":1420.769,"text":"オンプレミスのファイルサーバーやNASと、"},{"t":1424.034,"text":"S3・EFS・FSxの間で、"},{"t":1428.845,"text":"大量のファイルを高速かつ自動で同期できるサービスなのだ。"},{"t":1433.452,"text":"差分だけを転送できるから、継続的な同期にも向いているのだ。"},{"t":1438.735,"text":"SAPでは「オンプレミスの大量ファイルをS3に定期的に同期したい」"},{"t":1444.954,"text":"という問題の正解がDataSyncなのだー！"},{"t":1448.332,"text":""},{"t":1448.532,"text":"【AWS Snow Family】"},{"t":1450.855,"text":""},{"t":1451.055,"text":"インターネット回線が遅すぎて、"},{"t":1453.685,"text":"データ転送に何ヶ月もかかってしまうような、"},{"t":1457.191,"text":"超大容量データを物理デバイスで運ぶサービスなのだ。"},{"t":1461.464,"text":"「Snowcone」は小型で数十テラバイト程度。"},{"t":1465.375,"text":"「Snowball Edge」はテラバイト級で、"},{"t":1468.831,"text":"ちょっとした演算もできるのだ。"},{"t":1471.131,"text":"「Snowmobile」はトラック1台分、"},{"t":1474.285,"text":"エクサバイト級の超巨大データセンター丸ごとの移行に使うのだ。"},{"t":1479.302,"text":"SAPでは「ネットワーク回線では非現実的な量のデータを移行したい」"},{"t":1485.425,"text":"という問題の正解がSnow Familyなのだー！"},{"t":1488.904,"text":"目安として、転送に1週間以上かかるなら、"},{"t":1492.879,"text":"物理デバイスの方が速いことが多いのだ。"},{"t":1496.159,"text":""},{"t":1496.359,"text":"【AWS Transfer Family】"},{"t":1499.073,"text":""},{"t":1499.273,"text":"FTPやSFTPといった古い転送プロトコルを使い続けている"},{"t":1505.011,"text":"取引先やシステムから、"},{"t":1507.114,"text":"S3やEFSへファイルを受け渡しできるようにするサービスなのだ。"},{"t":1512.201,"text":"プロトコルを変えたくないレガシーシステムとの連携で使うのだー！"},{"t":1516.955,"text":""},{"t":1517.155,"text":"【AWS Application Migration Service。MGN。】"},{"t":1522.326,"text":""},{"t":1522.526,"text":"オンプレミスやほかのクラウドの"},{"t":1524.929,"text":"サーバーをまるごと、"},{"t":1526.551,"text":"最小限の変更でAWSのEC2に移行するサービスなのだ。"},{"t":1532.068,"text":"「リフトアンドシフト」、"},{"t":1533.639,"text":"つまりアプリを改修せずにそのまま持ち上げて移す時の主力なのだ。"},{"t":1538.834,"text":"DRSと仕組みは似ているけれど、"},{"t":1541.71,"text":"MGNは「恒久的な移行」、"},{"t":1544.726,"text":"DRSは「災害時の一時的な切り替え」という目的の違いがあるのだー！"},{"t":1551.359,"text":""},{"t":1551.559,"text":"【7Rという考え方】"},{"t":1553.859,"text":""},{"t":1554.059,"text":"移行戦略には7つのパターンがあるのだ。"},{"t":1557.329,"text":"「Retire（廃止）」使わないなら捨てるのだ。"},{"t":1561.169,"text":"「Retain（保持）」今は動かさない。"},{"t":1564.566,"text":"「Rehost（リホスト）」そのままの形でクラウドへ移す、リフトアンドシフト。"},{"t":1571.034,"text":"「Relocate（リロケート）」VMwareなどの環境ごと移す。"},{"t":1576.218,"text":"「Repurchase（再購入）」SaaSに買い替える。"},{"t":1580.518,"text":"「Replatform（リプラットフォーム）」少し手直ししてクラウド最適化する。"},{"t":1586.45,"text":"「Refactor（リファクタ）」設計から作り直して、クラウドネイティブにする。"},{"t":1592.482,"text":"SAPでは、状況に応じてどのRを選ぶべきかという判断問題が出るのだー！"},{"t":1599.19,"text":""},{"t":1599.39,"text":"【移行の規模とスピードで選ぶ判断基準】"},{"t":1602.639,"text":""},{"t":1602.839,"text":"7Rの中でも、SAPでは「状況設定」から"},{"t":1608.475,"text":"RehostなのかReplatform・Refactorなのかを見抜く問題が多いのだ。"},{"t":1614.232,"text":""},{"t":1614.432,"text":"「数百台規模のサーバーを、数週間という短期間で、"},{"t":1619.129,"text":"とにかく早くクラウドへ移したい」"},{"t":1621.689,"text":"という、規模とスピードが重視される場面では、"},{"t":1625.471,"text":"アプリを改修しないRehost、"},{"t":1627.86,"text":"つまりApplication Migration Service（MGN）による"},{"t":1633.337,"text":"リフトアンドシフトが正解なのだ。"},{"t":1635.959,"text":"まず移してから、後でクラウド最適化する、という順番なのだ。"},{"t":1641.23,"text":""},{"t":1641.43,"text":"一方で「移行と同時に、コンテナ化やサーバーレス化を進めて、"},{"t":1646.777,"text":"運用の俊敏性（アジリティ）を高めたい」"},{"t":1650.837,"text":"という目的重視の場面では、"},{"t":1653.304,"text":"少し手直しするReplatformや、"},{"t":1656.04,"text":"設計から作り直すRefactorが正解になるのだ。"},{"t":1660.06,"text":"SAPでは「時間がない・台数が多い」ならRehost、"},{"t":1665.623,"text":"「時間をかけてでも将来の運用性を上げたい」ならReplatform・Refactorと、"},{"t":1672.248,"text":"問題文の優先順位を読み取るのがコツなのだー！"},{"t":1676.097,"text":""},{"t":1676.297,"text":""},{"t":1676.497,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1676.697,"text":"第8章。目的別データベースとモダナイゼーション。"},{"t":1680.86,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1681.06,"text":""},{"t":1681.26,"text":"「1つのデータベースで全部済ませる」時代は終わったのだ。"},{"t":1685.817,"text":"用途ごとに最適なデータベースを選ぶ、"},{"t":1688.924,"text":"「パーパスビルト」の考え方が、SAPの重要テーマなのだ！"},{"t":1694.534,"text":""},{"t":1694.734,"text":"【Amazon DocumentDB】"},{"t":1696.854,"text":""},{"t":1697.054,"text":"MongoDBと互換性のある、"},{"t":1699.488,"text":"ドキュメント指向のNoSQLデータベースなのだ。"},{"t":1703.325,"text":"JSON形式のデータをそのまま柔軟に保存できるのだ。"},{"t":1707.756,"text":"MongoDBをオンプレミスで使っていたシステムの移行先として"},{"t":1712.546,"text":"選ばれるのだー！"},{"t":1713.916,"text":""},{"t":1714.116,"text":"【Amazon Neptune】"},{"t":1715.682,"text":""},{"t":1715.882,"text":"グラフデータベースなのだ。"},{"t":1717.873,"text":"「誰が誰とつながっているか」というような、"},{"t":1721.313,"text":"複雑な関係性のデータを高速にたどれるのだ。"},{"t":1725.312,"text":"SNSの友達関係や、不正検知のネットワーク分析などに向いているのだ。"},{"t":1732.011,"text":"SAPでは「複雑な関係性データを扱いたい」という問題の"},{"t":1738.092,"text":"正解がNeptuneになるのだー！"},{"t":1740.605,"text":""},{"t":1740.805,"text":"【Amazon Redshift】"},{"t":1742.535,"text":""},{"t":1742.735,"text":"大量のデータを分析するための、"},{"t":1745.483,"text":"データウェアハウスサービスなのだ。"},{"t":1747.893,"text":"何億行もあるデータに対して、"},{"t":1750.474,"text":"複雑な集計クエリを高速に実行できるのだ。"},{"t":1754.474,"text":"RDSが「日々のトランザクション処理」向けなのに対して、"},{"t":1759.582,"text":"Redshiftは「経営分析やレポーティング」向けと覚えるのだ。"},{"t":1765.084,"text":"SAPでは「大規模データの分析基盤が欲しい」という問題の"},{"t":1770.957,"text":"正解がRedshiftになるのだー！"},{"t":1773.612,"text":""},{"t":1773.812,"text":"【Amazon OpenSearch Service】"},{"t":1776.178,"text":""},{"t":1776.378,"text":"全文検索と、ログの分析に特化したサービスなのだ。"},{"t":1781.054,"text":"大量のログデータをリアルタイムで検索・可視化するのに使われるのだ。"},{"t":1786.686,"text":"SAPでは「アプリケーションログを集めて検索・分析したい」"},{"t":1792.435,"text":"という問題で登場するのだー！"},{"t":1794.975,"text":""},{"t":1795.175,"text":"【Aurora Serverless】"},{"t":1796.755,"text":""},{"t":1796.955,"text":"Auroraのキャパシティを、"},{"t":1798.588,"text":"アクセス量に応じて自動で伸び縮みさせる仕組みなのだ。"},{"t":1802.769,"text":"使わない時間帯は最小構成まで縮小してコストを抑えられるのだ。"},{"t":1808.273,"text":"開発環境や、アクセスが unpredictable、"},{"t":1812.55,"text":"つまり予測しにくいアプリケーションに向いているのだー！"},{"t":1816.405,"text":""},{"t":1816.605,"text":"【EventBridge】"},{"t":1818.047,"text":""},{"t":1818.247,"text":"SNSやSQSをさらに発展させた、"},{"t":1821.795,"text":"イベント駆動アーキテクチャの中心サービスなのだ。"},{"t":1825.431,"text":"ちなみにSQSのFIFOキューは、"},{"t":1828.758,"text":"標準では毎秒300件までの制限があるけど、"},{"t":1832.869,"text":"バッチ処理や高スループットモードを使えば"},{"t":1836.149,"text":"それ以上にも対応できるのだ。"},{"t":1838.563,"text":"順序保証とスループットのトレードオフを意識するのだー！"},{"t":1842.754,"text":"様々なAWSサービスや、"},{"t":1845.602,"text":"SaaSパートナーからのイベントを受け取って、"},{"t":1848.756,"text":"ルールに従って複数の送り先に振り分けられるのだ。"},{"t":1852.893,"text":"SNSより柔軟なフィルタリングができて、"},{"t":1856.338,"text":"イベントの内容に応じて細かく処理を分岐できるのだ。"},{"t":1860.502,"text":"SAPでは「複数のイベントソースを柔軟に連携させたい」"},{"t":1865.744,"text":"という問題の正解がEventBridgeになるのだー！"},{"t":1869.581,"text":""},{"t":1869.781,"text":"【Step Functions】"},{"t":1871.461,"text":""},{"t":1871.661,"text":"複数のLambda関数やAWSサービスを、"},{"t":1875.429,"text":"順番やフローを図で定義して連携させるサービスなのだ。"},{"t":1879.779,"text":"「注文を受けて、在庫を確認して、決済して、発送する」"},{"t":1885.344,"text":"というような一連の処理の流れを、"},{"t":1888.024,"text":"ビジュアルなワークフローとして管理できるのだ。"},{"t":1891.312,"text":"エラー時のリトライや分岐も簡単に組めるのだ。"},{"t":1894.848,"text":"SAPでは「複数のサーバーレス処理を順序立てて実行したい」"},{"t":1900.222,"text":"という問題の正解がStep Functionsになるのだー！"},{"t":1904.36,"text":""},{"t":1904.56,"text":""},{"t":1904.76,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1904.96,"text":"第9章。コンテナとモダンなコンピューティング。"},{"t":1908.651,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1908.851,"text":""},{"t":1909.051,"text":"【Fargate】"},{"t":1910.143,"text":""},{"t":1910.343,"text":"ECSやEKSでコンテナを動かす時、"},{"t":1914.005,"text":"裏側のサーバー、つまりEC2インスタンスの管理を"},{"t":1918.574,"text":"一切しなくていいようにする、"},{"t":1920.837,"text":"サーバーレスなコンテナ実行環境なのだ。"},{"t":1924.157,"text":"コンテナの定義だけ用意すれば、"},{"t":1926.656,"text":"あとはAWSが勝手にサーバーを用意して実行してくれるのだ。"},{"t":1931.788,"text":"SAPでは「コンテナのインフラ管理をなくしたい」という問題の"},{"t":1937.416,"text":"正解がFargateになるのだー！"},{"t":1939.968,"text":""},{"t":1940.168,"text":"【ECR】"},{"t":1941.357,"text":""},{"t":1941.557,"text":"Dockerコンテナのイメージを保存しておく、"},{"t":1944.737,"text":"プライベートなレジストリサービスなのだ。"},{"t":1947.633,"text":"ECSやEKSがコンテナを起動する時、"},{"t":1951.477,"text":"ここからイメージを取得するのだ。"},{"t":1953.978,"text":""},{"t":1954.178,"text":"【AWS Batch】"},{"t":1956.017,"text":""},{"t":1956.217,"text":"大量の計算処理を、"},{"t":1958.171,"text":"バッチジョブとして自動的にスケジューリング・実行してくれるサービスなのだ。"},{"t":1963.931,"text":"必要なだけEC2やFargateのリソースを自動で確保して、"},{"t":1968.67,"text":"処理が終わったら自動で解放するのだ。"},{"t":1971.668,"text":"科学技術計算や、大量の動画エンコードなどに向いているのだー！"},{"t":1977.174,"text":""},{"t":1977.374,"text":"【AWS App Runner】"},{"t":1979.638,"text":""},{"t":1979.838,"text":"コンテナ化されたウェブアプリやAPIを、"},{"t":1983.046,"text":"インフラを一切意識せずに、"},{"t":1985.353,"text":"コードやコンテナイメージから直接デプロイできるサービスなのだ。"},{"t":1989.96,"text":"Elastic Beanstalkよりさらに簡単に、"},{"t":1993.329,"text":"コンテナのウェブアプリを公開したい時に使うのだー！"},{"t":1997.29,"text":""},{"t":1997.49,"text":""},{"t":1997.69,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":1997.89,"text":"第10章。高度なセキュリティと監査。"},{"t":2001.031,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":2001.231,"text":""},{"t":2001.431,"text":"SAAより一段深い、組織全体のセキュリティ運用がテーマなのだ。"},{"t":2007.248,"text":""},{"t":2007.448,"text":"【AWS Config】"},{"t":2009.398,"text":""},{"t":2009.598,"text":"AWSリソースの設定状態を継続的に記録し、"},{"t":2014.351,"text":"「あるべき設定」からズレていないかチェックするサービスなのだ。"},{"t":2019.08,"text":"「S3バケットが誰でも読める設定になっていないか」"},{"t":2023.241,"text":"「暗号化されていないEBSがないか」といったルールを作って、"},{"t":2028.358,"text":"違反したリソースを自動検知できるのだ。"},{"t":2031.417,"text":"違反時に自動で修復するアクションも組めるのだ。"},{"t":2035.055,"text":"CloudTrailが「誰が何をしたか」の記録なのに対して、"},{"t":2040.047,"text":"Configは「今どんな設定になっているか」の記録なのだ。"},{"t":2045.013,"text":"SAPでは「組織全体で設定の一貫性をチェックしたい」という問題の"},{"t":2051.6,"text":"正解がConfigになるのだー！"},{"t":2053.997,"text":""},{"t":2054.197,"text":"【Security Hub】"},{"t":2056.199,"text":""},{"t":2056.399,"text":"GuardDutyやInspector、Configなど、"},{"t":2059.998,"text":"複数のセキュリティサービスの検出結果を、"},{"t":2063.321,"text":"1つのダッシュボードに集約してくれるサービスなのだ。"},{"t":2067.183,"text":"セキュリティの状況を一元的に把握できるようにする、"},{"t":2071.298,"text":"司令塔的な存在なのだ。"},{"t":2073.62,"text":""},{"t":2073.82,"text":"【Amazon GuardDuty】"},{"t":2075.684,"text":""},{"t":2075.884,"text":"AWSアカウント内の不審な挙動を、"},{"t":2079.391,"text":"機械学習を使って自動検知する脅威検出サービスなのだ。"},{"t":2084.248,"text":"普段と違うAPI呼び出しパターンや、"},{"t":2087.52,"text":"マルウェアに感染したような通信を検知して、"},{"t":2091.045,"text":"アラートを出すのだ。"},{"t":2092.576,"text":"SAPでは「悪意ある操作をリアルタイムで検知したい」という問題の"},{"t":2098.713,"text":"正解がGuardDutyになるのだー！"},{"t":2101.551,"text":""},{"t":2101.751,"text":"【Amazon Macie】"},{"t":2103.145,"text":""},{"t":2103.345,"text":"S3に保存されているデータの中身をスキャンして、"},{"t":2107.188,"text":"個人情報やクレジットカード番号のような"},{"t":2110.732,"text":"機密情報が含まれていないかを、"},{"t":2113.487,"text":"機械学習で自動検出するサービスなのだ。"},{"t":2117.029,"text":"SAPでは「S3内の機密データを自動で見つけたい」という問題の"},{"t":2123.577,"text":"正解がMacieになるのだー！"},{"t":2125.958,"text":""},{"t":2126.158,"text":"【Amazon Inspector】"},{"t":2127.934,"text":""},{"t":2128.134,"text":"EC2やコンテナイメージ、Lambda関数を対象に、"},{"t":2132.845,"text":"既知の脆弱性やセキュリティの穴を自動でスキャンするサービスなのだ。"},{"t":2137.851,"text":"継続的に評価し続けてくれるのだ。"},{"t":2140.898,"text":"SAPでは「サーバーの脆弱性を継続的にチェックしたい」という問題の"},{"t":2147.543,"text":"正解がInspectorになるのだー！"},{"t":2150.288,"text":""},{"t":2150.488,"text":"【IAM Access Analyzer】"},{"t":2152.954,"text":""},{"t":2153.154,"text":"意図せず外部アカウントに公開されているリソースがないかを"},{"t":2157.551,"text":"自動でチェックしてくれる機能なのだ。"},{"t":2160.194,"text":"「このS3バケット、実は外部からアクセスできる設定になってるよ」"},{"t":2165.811,"text":"と教えてくれるのだ。"},{"t":2167.489,"text":"SAPでは「意図しない外部アクセスを発見したい」という問題の"},{"t":2173.287,"text":"正解がAccess Analyzerになるのだー！"},{"t":2176.453,"text":""},{"t":2176.653,"text":"【ACM。AWS Certificate Manager。】"},{"t":2181.091,"text":""},{"t":2181.291,"text":"SSL/TLS証明書を、"},{"t":2184.552,"text":"無料で発行・更新・管理してくれるサービスなのだ。"},{"t":2189.287,"text":"ELBやCloudFrontに証明書を設定して、"},{"t":2193.269,"text":"HTTPS通信を実現するときに使うのだ。"},{"t":2197.631,"text":"証明書の期限切れの心配がなくなる自動更新が最大の強みなのだー！"},{"t":2203.514,"text":""},{"t":2203.714,"text":"【CloudHSM】"},{"t":2205.51,"text":""},{"t":2205.71,"text":"暗号化キーを、"},{"t":2207.141,"text":"専用のハードウェアセキュリティモジュールで管理するサービスなのだ。"},{"t":2211.739,"text":"KMSはAWSが鍵の管理基盤を共有で提供するのに対して、"},{"t":2217.927,"text":"CloudHSMは自分専用の物理的なハードウェアを占有できるのだ。"},{"t":2223.73,"text":"金融や政府機関など、"},{"t":2225.848,"text":"規制で「専用ハードウェアでの鍵管理」が求められる場合に使うのだー！"},{"t":2232.281,"text":""},{"t":2232.481,"text":"【クロスアカウントでのKMS暗号化。要注意なのだ！】"},{"t":2237.124,"text":""},{"t":2237.324,"text":"複数アカウントのログを1つのS3バケットに集約して"},{"t":2241.884,"text":"KMSで暗号化する設計はSAPの定番だけど、罠があるのだ。"},{"t":2248.171,"text":"S3の初期設定「AWS管理キー」は別アカウントから使えないのだ！"},{"t":2255.329,"text":"複数アカウントから同じバケットに書き込ませるなら、"},{"t":2259.217,"text":"自分で作る「カスタマー管理キー」を用意して、"},{"t":2263.624,"text":"キーポリシーで他アカウントのアクセスを許可する必要があるのだ。"},{"t":2268.307,"text":"「AWS管理キーのままクロスアカウント」は、"},{"t":2272.693,"text":"SAPでは動かない構成、不正解の罠になるのだー！"},{"t":2277.624,"text":""},{"t":2277.824,"text":""},{"t":2278.024,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":2278.224,"text":"第11章。コスト最適化戦略。"},{"t":2281.566,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":2281.766,"text":""},{"t":2281.966,"text":"SAPでは、技術だけでなくコストの数字を根拠に"},{"t":2286.638,"text":"判断する問題が増えるのだ。"},{"t":2289.072,"text":""},{"t":2289.272,"text":"【Savings Plans】"},{"t":2290.892,"text":""},{"t":2291.092,"text":"EC2の購入オプションの発展形なのだ。"},{"t":2294.598,"text":"リザーブドインスタンスが「特定のインスタンスタイプ」を予約するのに対して、"},{"t":2300.683,"text":"Savings Plansは「1時間あたりの利用金額」を約束することで割引を受けるのだ。"},{"t":2308.285,"text":"インスタンスタイプやリージョンを変更しても"},{"t":2311.474,"text":"割引が適用され続けるから、柔軟性が高いのだ。"},{"t":2316.132,"text":"SAPでは「将来の使用量が変わる可能性があるが割引は受けたい」"},{"t":2322.184,"text":"という問題の正解がSavings Plansになるのだー！"},{"t":2326.351,"text":""},{"t":2326.551,"text":"【AWS Cost Explorer】"},{"t":2329.375,"text":""},{"t":2329.575,"text":"過去のコストと使用状況を、"},{"t":2331.983,"text":"グラフで可視化・分析できるツールなのだ。"},{"t":2335.573,"text":"「先月どのサービスにいくら使ったか」を細かく見れるのだ。"},{"t":2340.282,"text":"将来のコスト予測機能もあるのだー！"},{"t":2343.283,"text":""},{"t":2343.483,"text":"【AWS Budgets】"},{"t":2345.348,"text":""},{"t":2345.548,"text":"決めた予算を超えそうになったら、"},{"t":2348.017,"text":"アラートを飛ばしてくれるサービスなのだ。"},{"t":2350.837,"text":"コストだけでなく、使用量やリザーブドインスタンスの"},{"t":2355.064,"text":"利用率に対する予算も設定できるのだ。"},{"t":2358.46,"text":"SAPでは「予算超過を未然に検知したい」という問題の"},{"t":2364.002,"text":"正解がBudgetsになるのだー！"},{"t":2366.397,"text":""},{"t":2366.597,"text":"【AWS Compute Optimizer】"},{"t":2369.604,"text":""},{"t":2369.804,"text":"過去の利用実績を機械学習で分析して、"},{"t":2373.521,"text":"「このEC2はオーバースペックだから、もっと小さいタイプで十分」"},{"t":2378.729,"text":"といった、最適なリソースサイズを提案してくれるサービスなのだ。"},{"t":2383.908,"text":"SAPでは「リソースのサイズ適正化をしたい」という問題の"},{"t":2389.414,"text":"正解がCompute Optimizerになるのだー！"},{"t":2392.884,"text":""},{"t":2393.084,"text":"【S3 Storage Lens】"},{"t":2395.158,"text":""},{"t":2395.358,"text":"組織全体のS3の利用状況を分析して、"},{"t":2399.413,"text":"コスト削減の機会を可視化してくれるサービスなのだ。"},{"t":2403.373,"text":"「このバケット、何ヶ月もアクセスがないのに"},{"t":2407.116,"text":"高いストレージクラスのままだ」といった発見に使うのだー！"},{"t":2411.743,"text":""},{"t":2411.943,"text":"【データ転送コストの考え方】"},{"t":2414.593,"text":""},{"t":2414.793,"text":"SAPで地味に重要なのが、データ転送料金なのだ。"},{"t":2419.649,"text":"同じAZ内の通信は基本無料。"},{"t":2422.892,"text":"違うAZ間、違うリージョン間の通信は課金されるのだ。"},{"t":2428.064,"text":"インターネットへのデータ送信、"},{"t":2430.428,"text":"つまり「アウト」の通信は課金されるが、"},{"t":2434.414,"text":"「イン」の受信は基本無料なのだ。"},{"t":2437.473,"text":"SAPでは「複数AZやリージョンをまたぐ設計で、"},{"t":2442.415,"text":"データ転送コストをどう抑えるか」という問題が出るから、"},{"t":2447.094,"text":"アーキテクチャ図を見て、通信の方向とコストを意識するのだー！"},{"t":2452.079,"text":""},{"t":2452.279,"text":""},{"t":2452.479,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":2452.679,"text":"第12章。ストレージの深掘り。"},{"t":2455.716,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":2455.916,"text":""},{"t":2456.116,"text":"【Amazon FSx】"},{"t":2458.068,"text":""},{"t":2458.268,"text":"特定のファイルシステムに特化した、"},{"t":2461.015,"text":"マネージドファイルストレージサービスなのだ。"},{"t":2464.097,"text":"「FSx for Windows File Server」は、"},{"t":2468.115,"text":"WindowsのSMBプロトコルに対応していて、"},{"t":2471.836,"text":"Windowsサーバー移行の受け皿になるのだ。"},{"t":2475.061,"text":"「FSx for Lustre」は超高速な並列処理向けで、"},{"t":2480.047,"text":"機械学習や、ハイパフォーマンスコンピューティングに使われるのだ。"},{"t":2485.109,"text":"「FSx for NetApp ONTAP」や「FSx for OpenZFS」もあって、"},{"t":2493.627,"text":"オンプレミスの特定のストレージ技術と互換性を持たせたい時に選ぶのだ。"},{"t":2499.32,"text":"SAPでは「特定のファイルシステムプロトコルが必要」"},{"t":2504.012,"text":"という問題で、それぞれの用途に応じたFSxが正解になるのだー！"},{"t":2510.009,"text":""},{"t":2510.209,"text":"【AWS Storage Gateway】"},{"t":2512.911,"text":""},{"t":2513.111,"text":"オンプレミスとAWSのストレージを橋渡しするハイブリッドサービスなのだ。"},{"t":2519.055,"text":"「ファイルゲートウェイ」はオンプレミスからS3を"},{"t":2522.468,"text":"ファイルサーバーのように使えるようにするのだ。"},{"t":2525.751,"text":"「ボリュームゲートウェイ」はオンプレミスのiSCSIストレージを"},{"t":2530.072,"text":"AWS上にバックアップするのだ。"},{"t":2533.14,"text":"「テープゲートウェイ」は、"},{"t":2535.599,"text":"物理テープの代わりに仮想テープとしてS3 Glacierを使うのだ。"},{"t":2540.847,"text":"SAPでは「オンプレミスのストレージをクラウドと連携させたい」"},{"t":2546.217,"text":"という問題で登場するのだー！"},{"t":2548.758,"text":""},{"t":2548.958,"text":"【AWS Backup】"},{"t":2551.131,"text":""},{"t":2551.331,"text":"EBS、RDS、DynamoDB、EFSなど、"},{"t":2557.283,"text":"複数のAWSサービスのバックアップを、"},{"t":2560.901,"text":"1つのポリシーで一元管理・自動化できるサービスなのだ。"},{"t":2565.849,"text":"バラバラにバックアップ設定するのではなく、"},{"t":2569.098,"text":"組織全体でバックアップのルールを統一したい時に使うのだ。"},{"t":2573.873,"text":"SAPでは「複数サービスのバックアップを一元管理したい」"},{"t":2579.08,"text":"という問題の正解がAWS Backupになるのだー！"},{"t":2583.692,"text":""},{"t":2583.892,"text":""},{"t":2584.092,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":2584.292,"text":"まとめ。SAPで絶対に覚えるべき鉄則なのだ！"},{"t":2588.855,"text":"━━━━━━━━━━━━━━━━━━━━"},{"t":2589.055,"text":""},{"t":2589.255,"text":"その1。マルチアカウントの統治はOrganizations、"},{"t":2593.658,"text":"禁止ルールはSCP、自動構築はControl Towerなのだ！"},{"t":2598.975,"text":""},{"t":2599.175,"text":"その2。ディザスタリカバリは、"},{"t":2601.669,"text":"バックアップと復元、パイロットライト、"},{"t":2605.063,"text":"ウォームスタンバイ、マルチサイトの4段階。"},{"t":2608.601,"text":"コストとRTO・RPOのバランスで選ぶのだ！"},{"t":2613.183,"text":""},{"t":2613.383,"text":"その3。デプロイで即座にロールバックしたいならブルーグリーン、"},{"t":2618.144,"text":"段階的に確認しながら進めたいならカナリアなのだ！"},{"t":2622.328,"text":""},{"t":2622.528,"text":"その4。異種データベース移行はSCTとDMSのセット、"},{"t":2628.08,"text":"サーバーそのものの移行はApplication Migration Service、"},{"t":2632.586,"text":"大量データはDataSyncか、それでも遅いならSnow Familyなのだ！"},{"t":2637.862,"text":""},{"t":2638.062,"text":"その5。データベースは目的別に選ぶのだ。"},{"t":2641.874,"text":"グラフはNeptune、分析はRedshift、"},{"t":2645.758,"text":"検索とログはOpenSearch、ドキュメントはDocumentDBなのだ！"},{"t":2651.11,"text":""},{"t":2651.31,"text":"その6。イベント駆動の連携はEventBridge、"},{"t":2655.508,"text":"複雑なワークフローの順序制御はStep Functionsなのだ！"},{"t":2660.225,"text":""},{"t":2660.425,"text":"その7。セキュリティ監査は、"},{"t":2662.89,"text":"脅威検出がGuardDuty、機密データ発見がMacie、"},{"t":2667.784,"text":"脆弱性スキャンがInspector、設定チェックがConfigなのだ！"},{"t":2672.918,"text":""},{"t":2673.118,"text":"その8。コスト最適化は、"},{"t":2675.708,"text":"柔軟な割引ならSavings Plans、"},{"t":2678.864,"text":"サイズ適正化の提案はCompute Optimizer、"},{"t":2682.754,"text":"予算アラートはBudgetsなのだ！"},{"t":2685.106,"text":""},{"t":2685.306,"text":"その9。ネットワークは、"},{"t":2687.698,"text":"非HTTP通信の高速化はGlobal Accelerator、"},{"t":2692.599,"text":"IP重複環境での接続はPrivateLink、"},{"t":2696.666,"text":"大規模VPC接続の集約はTransit Gatewayなのだ！"},{"t":2701.65,"text":""},{"t":2701.85,"text":"その10。迷ったら、"},{"t":2703.923,"text":"運用の手間が少ない選択肢、"},{"t":2706.496,"text":"AWSが管理してくれるマネージドサービスを選ぶのだ！"},{"t":2711.075,"text":"そしてWell-Architectedの6本柱で判断するのだ！"},{"t":2715.772,"text":""},{"t":2715.972,"text":"その11。SCPはDenyが最優先。"},{"t":2720.012,"text":"親OUで拒否されたら、IAMでどれだけ許可しても実行不可なのだ！"},{"t":2725.538,"text":""},{"t":2725.738,"text":"その12。Direct Connectの単一障害点対策は、"},{"t":2730.623,"text":"最高の冗長性ならDX2本足、"},{"t":2734.179,"text":"コスト重視ならDX＋VPNのバックアップなのだ！"},{"t":2738.851,"text":""},{"t":2739.051,"text":"その13。移行はスピードと台数重視ならRehost（MGN）、"},{"t":2744.994,"text":"運用性向上が目的ならReplatform・Refactorなのだ！"},{"t":2750.162,"text":""},{"t":2750.362,"text":"その14。権限の評価は、"},{"t":2753.309,"text":"明示的Deny＞SCP＞Permission Boundary＞IAMポリシーの"},{"t":2760.07,"text":"順で絞られていくのだ！"},{"t":2762.039,"text":""},{"t":2762.239,"text":"その15。Auroraは読み取り分散にリーダーエンドポイント、"},{"t":2766.997,"text":"Global DatabaseならRPO1秒未満・RTO1分未満なのだ！"},{"t":2773.484,"text":""},{"t":2773.684,"text":"その16。クロスアカウントのKMS暗号化は、"},{"t":2778.132,"text":"AWS管理キーではなく必ずカスタマー管理キーを使うのだ！"},{"t":2783.43,"text":""},{"t":2783.63,"text":"その17。SQS FIFOは毎秒300件が基本、"},{"t":2789.153,"text":"バッチや高スループットモードで拡張できるのだ！"},{"t":2792.781,"text":""},{"t":2792.981,"text":"これで全項目、コンプリートなのだ！"},{"t":2796.149,"text":"何度も聞いて、複雑な組織のアーキテクチャを頭に描くのだー！"},{"t":2801.381,"text":"試験会場で「ずんだもんが言ってた！」って思い出してほしいのだ！"},{"t":2806.743,"text":"絶対合格なのだー！！"},{"t":2808.675,"text":""}];
+const audio = document.getElementById('audio');
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const player = document.getElementById('player');
+const btnPlay = document.getElementById('btn-play');
+const progressFill = document.getElementById('progress-fill');
+const progressThumb = document.getElementById('progress-thumb');
+const progressTrack = document.getElementById('progress-track');
+const timeCurrent = document.getElementById('time-current');
+const timeTotal = document.getElementById('time-total');
+const pillSpeed = document.getElementById('pill-speed');
+const pillLoop = document.getElementById('pill-loop');
+const pillChapter = document.getElementById('pill-chapter');
+const pillSleep = document.getElementById('pill-sleep');
+const speedLabel = document.getElementById('speed-label');
+const chapterPanel = document.getElementById('chapter-panel');
+const chapterList = document.getElementById('chapter-list');
+const chapterLabel = document.getElementById('chapter-label');
+const sleepPanel = document.getElementById('sleep-panel');
+const sleepGrid = document.getElementById('sleep-grid');
+const sleepRemaining = document.getElementById('sleep-remaining');
+let sleepTimer=null,sleepEndTime=null,sleepInterval=null,activeSleepBtn=null,isDragging=false;
+dropZone.addEventListener('click',()=>fileInput.click());
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)loadFile(f);});
+fileInput.addEventListener('change',e=>{if(e.target.files[0])loadFile(e.target.files[0]);});
+function toDirectUrl(raw){
+  const m=raw.match(/drive\.google\.com\/file\/d\/([^/?]+)/);
+  if(m)return'https://drive.google.com/uc?export=download&id='+m[1];
+  const m2=raw.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if(m2)return'https://drive.google.com/uc?export=download&id='+m2[1];
+  return raw;
+}
+const urlInput=document.getElementById('url-input');
+const urlLoadBtn=document.getElementById('url-load-btn');
+const urlHint=document.getElementById('url-hint');
+urlLoadBtn.addEventListener('click',()=>{
+  const raw=urlInput.value.trim();if(!raw)return;
+  const url=toDirectUrl(raw);
+  urlHint.textContent='読み込み中...';
+  audio.src=url;audio.load();
+  audio.addEventListener('loadedmetadata',()=>{
+    urlHint.textContent='✅ 読み込み完了';
+    activatePlayer('🔗',raw.length>40?raw.slice(0,40)+'…':raw);
+    setupMediaSession();
+  },{once:true});
+  audio.addEventListener('error',()=>{
+    urlHint.textContent='❌ 読み込めませんでした。共有設定を「リンクを知っている全員が閲覧可」にしてください。';
+  },{once:true});
+});
+urlInput.addEventListener('keydown',e=>{if(e.key==='Enter')urlLoadBtn.click();});
+const DEFAULT_AUDIO_URL='https://github.com/clearcareaosept22-blip/audio-tools/releases/download/v1.0/AWS_SAP_%E5%9F%BA%E7%A4%8E%E7%9F%A5%E8%AD%98_%E9%A0%BB%E5%87%BA%E7%94%A8%E8%AA%9E_%E5%AE%8C%E5%85%A8%E7%89%88_%E6%9C%80%E7%B5%82%E7%89%88.mp3';
+window.addEventListener('load',()=>{
+  urlHint.textContent='音声を読み込み中...';
+  audio.src=DEFAULT_AUDIO_URL;audio.load();
+  audio.addEventListener('loadedmetadata',()=>{
+    urlHint.textContent='✅ 準備完了';
+    activatePlayer('🎧','AWS SAP 基礎知識 頻出用語 完全版');
+    setupMediaSession();
+  },{once:true});
+  audio.addEventListener('error',()=>{urlHint.textContent='❌ 読み込みエラー';},{once:true});
+});
+const STORAGE_KEY='aws_sap_pos';
+const toast=document.getElementById('toast');
+let saveTimer=null;
+
+function showToast(msg){
+  toast.textContent=msg;toast.classList.add('show');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>toast.classList.remove('show'),3000);
+}
+
+function savePosition(){
+  if(audio.duration&&isFinite(audio.duration)&&audio.currentTime>0){
+    localStorage.setItem(STORAGE_KEY,audio.currentTime.toFixed(1));
+  }
+}
+
+let lastSaved=0;
+function maybeSave(){
+  const now=Date.now();
+  if(now-lastSaved>5000){lastSaved=now;savePosition();}
+}
+
+window.addEventListener('beforeunload',savePosition);
+window.addEventListener('pagehide',savePosition);
+
+function loadFile(file){audio.src=URL.createObjectURL(file);audio.load();activatePlayer('🎵',file.name);setupMediaSession();}
+
+function restorePosition(){
+  const saved=localStorage.getItem(STORAGE_KEY);
+  if(!saved||parseFloat(saved)<1)return;
+  const t=parseFloat(saved);
+  if(t<audio.duration-5){
+    audio.currentTime=t;
+    showToast('前回の続き（'+formatTime(t)+'）から再生します');
+  }
+}
+function activatePlayer(icon,label){
+  dropZone.classList.add('has-file');
+  dropZone.querySelector('.drop-icon').textContent=icon;
+  dropZone.querySelector('.drop-label').textContent='';
+  dropZone.querySelector('.drop-filename').textContent='';
+  dropZone.querySelector('.drop-sub').textContent='';
+  let n=dropZone.querySelector('.file-name');
+  if(!n){n=document.createElement('div');n.className='file-name';dropZone.appendChild(n);}
+  n.textContent=label;player.classList.add('active');
+}
+btnPlay.addEventListener('click',()=>audio.paused?audio.play():audio.pause());
+audio.addEventListener('play',()=>{btnPlay.innerHTML='&#9646;&#9646;';});
+audio.addEventListener('pause',()=>{btnPlay.innerHTML='&#9654;';});
+audio.addEventListener('ended',()=>{btnPlay.innerHTML='&#9654;';});
+document.getElementById('btn-back10').addEventListener('click',()=>seek(-10));
+document.getElementById('btn-back5').addEventListener('click',()=>seek(-5));
+document.getElementById('btn-fwd5').addEventListener('click',()=>seek(5));
+document.getElementById('btn-fwd10').addEventListener('click',()=>seek(10));
+function seek(d){audio.currentTime=Math.max(0,Math.min(audio.duration||0,audio.currentTime+d));}
+audio.addEventListener('timeupdate',()=>{updateProgress();maybeSave();});
+audio.addEventListener('loadedmetadata',()=>{timeTotal.textContent=formatTime(audio.duration);updateProgress();restorePosition();});
+function updateProgress(){
+  if(isDragging)return;
+  const p=audio.duration?(audio.currentTime/audio.duration)*100:0;
+  progressFill.style.width=p+'%';progressThumb.style.left=p+'%';timeCurrent.textContent=formatTime(audio.currentTime);
+}
+function getSeekRatio(x){const r=progressTrack.getBoundingClientRect();return Math.max(0,Math.min(1,(x-r.left)/r.width));}
+progressTrack.addEventListener('pointerdown',e=>{isDragging=true;progressTrack.classList.add('dragging');progressTrack.setPointerCapture(e.pointerId);scrubTo(e.clientX);});
+progressTrack.addEventListener('pointermove',e=>{if(isDragging)scrubTo(e.clientX);});
+progressTrack.addEventListener('pointerup',e=>{if(!isDragging)return;isDragging=false;progressTrack.classList.remove('dragging');scrubTo(e.clientX);});
+progressTrack.addEventListener('pointercancel',()=>{isDragging=false;progressTrack.classList.remove('dragging');});
+function scrubTo(x){
+  const r=getSeekRatio(x);
+  progressFill.style.width=(r*100)+'%';progressThumb.style.left=(r*100)+'%';
+  timeCurrent.textContent=formatTime(r*(audio.duration||0));
+  if(audio.duration)audio.currentTime=r*audio.duration;
+}
+const speeds=[0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.5,3.0];
+const speedRange=document.getElementById('speed-range');
+const speedSliderVal=document.getElementById('speed-slider-val');
+function setSpeed(s){
+  audio.playbackRate=s;
+  const lbl=s+'×';speedLabel.textContent=lbl;speedSliderVal.textContent=lbl;
+  pillSpeed.classList.toggle('active',s!==1.0);
+  const p=(speeds.indexOf(s)/(speeds.length-1))*100;
+  speedRange.style.background='linear-gradient(to right,var(--accent) 0%,var(--accent) '+p+'%,var(--surface2) '+p+'%)';
+}
+speedRange.addEventListener('input',()=>setSpeed(speeds[parseInt(speedRange.value)]));
+let loopOn=false;
+pillLoop.addEventListener('click',()=>{loopOn=!loopOn;audio.loop=loopOn;pillLoop.classList.toggle('active',loopOn);});
+CHAPTERS.forEach((ch,i)=>{
+  const btn=document.createElement('button');btn.className='chapter-btn';
+  btn.innerHTML='<span>'+ch.text+'</span><span class="chapter-time">'+formatTime(ch.t)+'</span>';
+  btn.addEventListener('click',()=>{audio.currentTime=ch.t;if(!audio.paused)audio.play();chapterPanel.classList.remove('open');pillChapter.classList.remove('active');});
+  chapterList.appendChild(btn);
+});
+function updateChapter(){
+  const t=audio.currentTime;let cur=-1;
+  for(let i=0;i<CHAPTERS.length;i++){if(CHAPTERS[i].t<=t)cur=i;else break;}
+  chapterLabel.textContent=cur>=0?(cur+1)+'章':'—';
+  document.querySelectorAll('.chapter-btn').forEach((b,i)=>b.classList.toggle('current',i===cur));
+}
+audio.addEventListener('timeupdate',updateChapter);
+audio.addEventListener('seeked',updateChapter);
+pillChapter.addEventListener('click',()=>{
+  chapterPanel.classList.toggle('open');
+  pillChapter.classList.toggle('active',chapterPanel.classList.contains('open'));
+  if(chapterPanel.classList.contains('open'))sleepPanel.classList.remove('open');
+});
+const sleepOptions=[5,10,15,20,30,45,60,90];
+sleepOptions.forEach(m=>{
+  const btn=document.createElement('button');btn.className='sleep-btn';btn.textContent=m+'分';
+  btn.addEventListener('click',()=>setSleep(m,btn));sleepGrid.appendChild(btn);
+});
+function setSleep(minutes,btn){
+  clearSleepTimer();
+  if(activeSleepBtn===btn){activeSleepBtn=null;pillSleep.classList.remove('active');return;}
+  activeSleepBtn=btn;
+  document.querySelectorAll('.sleep-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');pillSleep.classList.add('active');
+  sleepEndTime=Date.now()+minutes*60000;
+  sleepRemaining.classList.add('visible');updateSleepDisplay();
+  sleepInterval=setInterval(updateSleepDisplay,1000);
+  sleepTimer=setTimeout(()=>{audio.pause();clearSleepTimer();pillSleep.classList.remove('active');},minutes*60000);
+}
+function updateSleepDisplay(){
+  const ms=sleepEndTime-Date.now();if(ms<=0){sleepRemaining.textContent='';return;}
+  const m=Math.floor(ms/60000),s=Math.floor((ms%60000)/1000);
+  sleepRemaining.textContent='残り '+m+':'+String(s).padStart(2,'0');
+}
+function clearSleepTimer(){
+  clearTimeout(sleepTimer);clearInterval(sleepInterval);
+  sleepTimer=null;sleepInterval=null;sleepEndTime=null;
+  sleepRemaining.classList.remove('visible');sleepRemaining.textContent='';
+  document.querySelectorAll('.sleep-btn').forEach(b=>b.classList.remove('active'));
+  activeSleepBtn=null;
+}
+pillSleep.addEventListener('click',()=>{
+  sleepPanel.classList.toggle('open');
+  pillSleep.classList.toggle('active',sleepPanel.classList.contains('open')&&!sleepTimer);
+  if(sleepPanel.classList.contains('open'))chapterPanel.classList.remove('open');
+});
+function setupMediaSession(){
+  if(!('mediaSession' in navigator))return;
+  navigator.mediaSession.metadata=new MediaMetadata({title:'AWS SAP 基礎知識 頻出用語 完全版',artist:'ずんだもん',album:'AWS SAP-C02 対策'});
+  for(const[action,handler]of[['play',()=>audio.play()],['pause',()=>audio.pause()],['seekbackward',()=>seek(-10)],['seekforward',()=>seek(10)],['previoustrack',()=>seek(-10)],['nexttrack',()=>seek(10)],['stop',()=>{audio.pause();audio.currentTime=0;}]]){
+    try{navigator.mediaSession.setActionHandler(action,handler);}catch{}
+  }
+  function up(){if(!audio.duration||!isFinite(audio.duration))return;try{navigator.mediaSession.setPositionState({duration:audio.duration,playbackRate:audio.playbackRate,position:audio.currentTime});}catch{}}
+  audio.addEventListener('timeupdate',up);audio.addEventListener('loadedmetadata',up);
+}
+const CUES_CALC_DURATION=2808.875;
+function getCueIdx(t){
+  const scaled=audio.duration&&isFinite(audio.duration)?t*(CUES_CALC_DURATION/audio.duration):t;
+  let lo=0,hi=CUES.length-1,result=-1;
+  while(lo<=hi){const mid=(lo+hi)>>1;if(CUES[mid].t<=scaled){result=mid;lo=mid+1;}else hi=mid-1;}
+  return result;
+}
+const lyricText=document.getElementById('lyric-text');let lastCueIdx=-1;
+function updateLyric(){
+  if(!audio.duration||!isFinite(audio.duration))return;
+  const idx=getCueIdx(audio.currentTime);
+  if(idx===lastCueIdx)return;lastCueIdx=idx;
+  if(idx<0){lyricText.textContent='再生すると表示されます';lyricText.classList.add('placeholder');}
+  else{lyricText.textContent=CUES[idx].text;lyricText.classList.remove('placeholder');}
+}
+audio.addEventListener('timeupdate',updateLyric);
+audio.addEventListener('seeked',updateLyric);
+function formatTime(s){
+  if(!s||isNaN(s))return'0:00';
+  const m=Math.floor(s/60),sec=Math.floor(s%60);
+  return m+':'+String(sec).padStart(2,'0');
+}
+</script>
+</body>
+</html>
