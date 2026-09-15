@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ITストラテジスト午前2 頻出用語 完全版 | 音声プレイヤー</title>
+<style>
+  :root {
+    --bg: #0f0f13; --surface: #1a1a22; --surface2: #22222e;
+    --accent: #f7934f; --accent-dim: rgba(247,147,79,0.15);
+    --text: #e8e8f0; --text-sub: #7a7a9a; --border: #2a2a38;
+    --radius: 16px; --radius-sm: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Helvetica Neue', Arial, sans-serif; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px 40px; }
+  .header { width: 100%; max-width: 480px; margin-bottom: 8px; }
+  .app-title { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-sub); }
+  .app-subtitle { font-size: 18px; font-weight: 700; color: var(--text); margin-top: 4px; }
+  .app-badge { display: inline-block; background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; padding: 2px 8px; border-radius: 20px; margin-top: 6px; }
+  .loading-msg { width: 100%; max-width: 480px; margin-top: 24px; text-align: center; font-size: 13px; color: var(--text-sub); }
+  .player { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 16px; margin-top: 16px; opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .player.active { opacity: 1; pointer-events: all; }
+  .lyric-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; height: 138px; display: flex; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
+  .lyric-text { font-size: 20px; line-height: 1.7; color: var(--text); font-weight: 700; letter-spacing: .01em; }
+  .lyric-text.placeholder { color: var(--text-sub); font-size: 14px; font-weight: 400; }
+  .progress-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .progress-bar-track { width: 100%; height: 44px; background: transparent; position: relative; cursor: pointer; touch-action: none; display: flex; align-items: center; }
+  .progress-bar-track::before { content: ''; position: absolute; left: 0; right: 0; height: 6px; background: var(--surface2); border-radius: 3px; }
+  .progress-bar-fill { position: absolute; left: 0; height: 6px; background: var(--accent); border-radius: 3px; width: 0%; pointer-events: none; transition: width .08s linear; }
+  .progress-thumb { position: absolute; top: 50%; transform: translate(-50%,-50%); width: 20px; height: 20px; background: var(--accent); border-radius: 50%; left: 0%; pointer-events: none; box-shadow: 0 0 0 4px rgba(247,147,79,.25); transition: left .08s linear; }
+  .progress-bar-track.dragging .progress-thumb { width: 26px; height: 26px; box-shadow: 0 0 0 6px rgba(247,147,79,.3); }
+  .time-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+  .controls-main { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; transition: background .15s; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .btn:active { background: var(--surface2); }
+  .btn-seek { width: 60px; height: 60px; font-size: 18px; }
+  .btn-seek span { font-size: 10px; color: var(--text-sub); font-weight: 600; letter-spacing: .05em; }
+  .btn-play { width: 68px; height: 68px; background: var(--accent); border-color: var(--accent); border-radius: 50%; font-size: 26px; }
+  .btn-play:active { opacity: .85; }
+  .controls-secondary { display: flex; gap: 8px; }
+  .pill { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 6px; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; transition: background .15s, border-color .15s; }
+  .pill.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .pill-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: inherit; }
+  .pill-value { font-size: 14px; font-weight: 700; color: inherit; }
+  .speed-slider-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .speed-slider-header { display: flex; justify-content: space-between; align-items: center; }
+  .speed-slider-label { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-sub); }
+  .speed-slider-value { font-size: 16px; font-weight: 700; color: var(--accent); }
+  input[type=range].speed-range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: linear-gradient(to right, var(--accent) 0%, var(--accent) 33%, var(--surface2) 33%); border-radius: 3px; outline: none; cursor: pointer; }
+  input[type=range].speed-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+  .speed-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-sub); padding: 0 2px; }
+  .chapter-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: none; flex-direction: column; gap: 8px; }
+  .chapter-panel.open { display: flex; }
+  .chapter-panel-header { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-sub); margin-bottom: 2px; }
+  .chapter-list { display: flex; flex-direction: column; gap: 4px; }
+  .chapter-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-size: 13px; font-weight: 500; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; transition: background .15s, border-color .15s; -webkit-tap-highlight-color: transparent; }
+  .chapter-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
+  .chapter-btn.current { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .chapter-time { font-size: 11px; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+  .sleep-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: none; flex-direction: column; gap: 10px; }
+  .sleep-panel.open { display: flex; }
+  .sleep-panel-header { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-sub); }
+  .sleep-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+  .sleep-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 4px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; transition: background .15s, border-color .15s; -webkit-tap-highlight-color: transparent; }
+  .sleep-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .sleep-remaining { text-align: center; font-size: 13px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; display: none; }
+  .sleep-remaining.visible { display: block; }
+  .stats-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .stats-left { display: flex; flex-direction: column; gap: 3px; }
+  .stats-label { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-sub); }
+  .stats-time { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .stats-laps { font-size: 11px; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+  .stats-reset { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text-sub); font-size: 11px; font-weight: 600; padding: 6px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: border-color .15s, color .15s; }
+  .stats-reset:hover { border-color: var(--accent); color: var(--accent); }
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    background: var(--surface2); border: 1px solid var(--accent);
+    color: var(--text); font-size: 13px; font-weight: 500;
+    padding: 10px 18px; border-radius: 20px;
+    white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity .3s;
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="app-title">IT Strategist</div>
+  <div class="app-subtitle">午前2 頻出用語 完全版</div>
+  <span class="app-badge">午前2 対応 &nbsp;/&nbsp; 42分 &nbsp;/&nbsp; 全8章</span>
+</div>
+<div class="loading-msg" id="loading-msg">音声を読み込み中...</div>
+<audio id="audio"></audio>
+<div class="toast" id="toast"></div>
+<div class="player" id="player">
+  <div class="lyric-box">
+    <span class="lyric-text placeholder" id="lyric-text">再生すると表示されます</span>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar-track" id="progress-track">
+      <div class="progress-bar-fill" id="progress-fill"></div>
+      <div class="progress-thumb" id="progress-thumb"></div>
+    </div>
+    <div class="time-row"><span id="time-current">0:00</span><span id="time-total">0:00</span></div>
+  </div>
+  <div class="controls-main">
+    <button class="btn btn-seek" id="btn-back10">&#8617; <span>10秒</span></button>
+    <button class="btn btn-seek" id="btn-back5">&#8617; <span>5秒</span></button>
+    <button class="btn btn-play" id="btn-play">&#9654;</button>
+    <button class="btn btn-seek" id="btn-fwd5">&#8618; <span>5秒</span></button>
+    <button class="btn btn-seek" id="btn-fwd10">&#8618; <span>10秒</span></button>
+  </div>
+  <div class="controls-secondary">
+    <div class="pill" id="pill-speed" style="cursor:default">
+      <span class="pill-label">速度</span>
+      <span class="pill-value" id="speed-label">1.0&times;</span>
+    </div>
+    <div class="pill" id="pill-loop">
+      <span class="pill-label">ループ</span>
+      <span class="pill-value">&#128257;</span>
+    </div>
+    <div class="pill" id="pill-chapter">
+      <span class="pill-label">章</span>
+      <span class="pill-value" id="chapter-label">&mdash;</span>
+    </div>
+    <div class="pill" id="pill-sleep">
+      <span class="pill-label">タイマー</span>
+      <span class="pill-value">&#128164;</span>
+    </div>
+  </div>
+  <div class="speed-slider-wrap">
+    <div class="speed-slider-header">
+      <span class="speed-slider-label">再生速度</span>
+      <span class="speed-slider-value" id="speed-slider-val">1.0&times;</span>
+    </div>
+    <input type="range" class="speed-range" id="speed-range" min="0" max="8" step="1" value="2">
+    <div class="speed-ticks">
+      <span>0.5&times;</span><span>0.75&times;</span><span>1&times;</span><span>1.25&times;</span><span>1.5&times;</span><span>1.75&times;</span><span>2&times;</span><span>2.5&times;</span><span>3&times;</span>
+    </div>
+  </div>
+  <div class="chapter-panel" id="chapter-panel">
+    <div class="chapter-panel-header">チャプター一覧</div>
+    <div class="chapter-list" id="chapter-list"></div>
+  </div>
+  <div class="sleep-panel" id="sleep-panel">
+    <div class="sleep-panel-header">スリープタイマー</div>
+    <div class="sleep-grid" id="sleep-grid"></div>
+    <div class="sleep-remaining" id="sleep-remaining"></div>
+  </div>
+  <div class="stats-box">
+    <div class="stats-left">
+      <div class="stats-label">総再生時間</div>
+      <div class="stats-time" id="stats-time">0分00秒</div>
+      <div class="stats-laps" id="stats-laps">≈ 0.0周</div>
+    </div>
+    <button class="stats-reset" id="stats-reset">リセット</button>
+  </div>
+</div>
+<script>
+const CHAPTERS = [{"t":19.66,"text":"第1章。経営戦略とフレームワーク。"},{"t":444.34,"text":"第2章。マーケティング理論。"},{"t":811.56,"text":"第3章。イノベーションと技術経営。"},{"t":1104.46,"text":"第4章。会計・財務と管理指標。"},{"t":1451.52,"text":"第5章。組織・人事・リーダーシップ。"},{"t":1666.14,"text":"第6章。最新技術とシステム戦略。"},{"t":1993.0,"text":"第7章。セキュリティとリスク管理。"},{"t":2114.06,"text":"第8章。法務・契約・分析手法。"}];
+const CUES = [{"t":2.81,"text":"ずんだもんの、ITストラテジスト午前2、頻出用語。"},{"t":5.62,"text":"こんにちはなのだ！"},{"t":6.54,"text":"ずんだもんなのだ！"},{"t":8.34,"text":"今日は、ITストラテジスト試験、"},{"t":11.32,"text":"午前2の重要用語を、一気に攻略するのだ！"},{"t":15.76,"text":"それじゃあ、合格目指して、スタートなのだー！"},{"t":19.66,"text":"第1章。経営戦略とフレームワーク。"},{"t":23.5,"text":"まずは戦略の基礎からなのだ。"},{"t":26.2,"text":"外部環境と内部環境を、どう整理するかがポイントなのだ！"},{"t":31.14,"text":"ペスト分析。"},{"t":32.82,"text":"ペスト分析は、企業を取り巻く外部環境を、"},{"t":36.68,"text":"政治、経済、社会、技術の4つに整理するフレームワークなのだ！"},{"t":43.48,"text":"政治は、規制や税制。"},{"t":45.76,"text":"経済は、景気や金利。"},{"t":48.9,"text":"社会は、価値観や人口動態。"},{"t":51.58,"text":"技術は、AI、クラウド、DXみたいな変化。"},{"t":57.22,"text":"午前2では、内部環境と混ぜてくるひっかけが多いから、注意なのだー。"},{"t":63.0,"text":"企業戦略を立てるときは、まず外部の波を読むことが必須。"},{"t":67.76,"text":"ペストは、戦略のスタート地点なのだ！"},{"t":71.16,"text":"サンシー分析。"},{"t":73.37,"text":"顧客、カスタマー。"},{"t":74.76,"text":"競合、コンペティター。"},{"t":77.18,"text":"自社、カンパニー。"},{"t":79.19,"text":"この3つで、市場を読み解くのだ。"},{"t":81.84,"text":"顧客のニーズ、競合の動き、自社の強み弱みを、"},{"t":86.64,"text":"同時に比較するのがポイント。"},{"t":88.9,"text":"午前2では、サンシーは外部、内部の視点が混在する、という理解が重要。"},{"t":95.66,"text":"顧客起点の発想が求められるので、"},{"t":98.84,"text":"まず顧客要因から整理するのが正解なのだ！"},{"t":102.7,"text":"スウォット分析。"},{"t":104.64,"text":"スウォットは、内部の強み、弱みと、"},{"t":107.82,"text":"外部の機会、脅威を同時に整理する、"},{"t":111.26,"text":"シンプルだけど最強の道具なのだ！"},{"t":114.14,"text":"午前2では、外部要因を内部に分類している、"},{"t":118.24,"text":"みたいな混乱を誘う選択肢がよく出るのだ。"},{"t":121.78,"text":"機会と脅威は、自社以外に起きる変化。"},{"t":125.28,"text":"強み弱みは、自社内の話。"},{"t":128.08,"text":"区別さえ理解すれば、即答問題なのだー！"},{"t":131.72,"text":"ファイブフォース分析。"},{"t":133.56,"text":"業界の競争がどれだけ激しいかを、5つの力で評価するのだ！"},{"t":139.54,"text":"1つ目、新規参入。"},{"t":141.62,"text":"2つ目、代替品。"},{"t":143.74,"text":"3つ目、買い手の交渉力。"},{"t":146.32,"text":"4つ目、売り手の交渉力。"},{"t":149.1,"text":"5つ目、既存企業の敵対関係。"},{"t":152.56,"text":"午前2では、図の空欄にどの力が入る？系の出題が多いのだ。"},{"t":158.64,"text":"戦略を考える前に、そもそも業界が儲かる構造か、"},{"t":163.18,"text":"を判断するために使うのだ！"},{"t":166.34,"text":"ブルーオーシャン戦略。"},{"t":167.86,"text":"競争の激しいレッドオーシャンを避け、"},{"t":171.0,"text":"競争そのものを無効化する市場を創り出す発想なのだ！"},{"t":175.28,"text":"新しい価値軸を定義し、従来のやり方から脱却するのがポイント。"},{"t":181.02,"text":"午前2では、競争しない戦略、価値革新、がキーワード。"},{"t":187.15,"text":"ライバル不在の市場ほど、利益率が高くなるのだー！"},{"t":191.1,"text":"バリューチェーン。"},{"t":192.96,"text":"企業活動を分解して、どこで価値が発生し、"},{"t":196.64,"text":"どこでコストが発生しているかを分析する道具なのだ。"},{"t":200.92,"text":"物流、製造、出荷、販売、サービスなどの主活動と、"},{"t":207.24,"text":"調達、技術開発、人事、基盤などの支援活動に区分するのだ。"},{"t":213.9,"text":"午前2では、支援活動を主活動に誤分類するひっかけが定番。"},{"t":219.74,"text":"競争優位がどの工程で生まれているかを、見極めるのだ！"},{"t":224.54,"text":"ビジネスモデルキャンバス。"},{"t":226.32,"text":"9つの要素で、ビジネスの全体像を一枚にまとめるフレームワークだよー！"},{"t":232.76,"text":"顧客、価値提案、チャネル、顧客関係、収益、"},{"t":238.56,"text":"リソース、主要活動、パートナー、コスト構造の9つ。"},{"t":243.68,"text":"午前2では、説明文がそのまま選択肢になるほど定番。"},{"t":248.7,"text":"抜け漏れを防ぎ、事業の全体像を短時間で理解できるのだ！"},{"t":254.08,"text":"アンゾフの成長マトリクス。"},{"t":256.24,"text":"「製品」と「市場」の2軸で成長戦略を4つに整理するフレームワークなのだ！"},{"t":263.92,"text":"製品＝提供する商品・サービス、市場＝顧客層・地域・販路と覚えるのがコツなのだ！"},{"t":273.18,"text":"市場浸透（既存製品×既存市場）：今の市場でシェア拡大"},{"t":279.16,"text":"市場開拓（既存製品×新規市場）：商品は同じで新しい顧客・地域・販路へ"},{"t":287.7,"text":"製品開発（新規製品×既存市場）：顧客は同じで新商品・新サービス追加"},{"t":295.44,"text":"多角化（新規製品×新規市場）：製品も市場も新規でリスク最大"},{"t":302.24,"text":"午前Ⅱでは「市場開拓」と「製品開発」を入れ替えるひっかけが定番なのだ！"},{"t":309.82,"text":"地域変更・チャネル変更も「市場」に含まれることをセットで覚えるのだ！"},{"t":316.44,"text":"PPM。プロダクトポートフォリオマネジメント。"},{"t":320.92,"text":"事業や製品を4象限に分類して、投資の優先順位を決める考え方なのだ！"},{"t":327.56,"text":"軸は、市場成長率の高低と、相対的市場シェアの高低。"},{"t":333.44,"text":"花形（高成長×高シェア）：投資が必要、将来の稼ぎ頭"},{"t":339.78,"text":"金のなる木（低成長×高シェア）：キャッシュを生む源泉"},{"t":345.44,"text":"問題児（高成長×低シェア）：投資して花形化するか撤退判断"},{"t":351.36,"text":"負け犬（低成長×低シェア）：縮小・撤退が基本"},{"t":356.94,"text":"午前Ⅱでは「金のなる木のキャッシュを花形・問題児に投資」という資金の流れが頻出なのだ！"},{"t":364.92,"text":"ひっかけは「相対的」なのにシェアを絶対値で言い換える選択肢なのだ！"},{"t":371.48,"text":"コアコンピタンス。"},{"t":372.56,"text":"競合他社が真似できない、自社固有の強みや能力のことなのだ。"},{"t":378.12,"text":"顧客に価値をもたらし、複数の市場に応用でき、模倣困難であることが条件。"},{"t":384.74,"text":"ゲイリー・ハメルとC.K.プラハラードが提唱した概念なのだ。"},{"t":391.68,"text":"午前2では、模倣困難性という観点が問われやすいのだ！"},{"t":396.64,"text":"垂直統合。"},{"t":398.62,"text":"サプライチェーンの川上または川下の企業をM&Aで取り込む多角化戦略。"},{"t":404.14,"text":"川上統合は原材料・製造工程の取り込み、川下統合は販売・流通の取り込みなのだ。"},{"t":413.62,"text":"午前2では、多角化戦略のうちM&Aによる垂直統合として問われるのだ！"},{"t":420.64,"text":"LBO。レバレッジドバイアウト。"},{"t":423.28,"text":"買収対象企業の資産や将来キャッシュフローを担保に借入れを行い、"},{"t":429.08,"text":"少ない自己資金で大きな企業買収を実現するM&A手法。"},{"t":434.62,"text":"レバレッジ、つまり借入を活用するのが名前の由来なのだ。"},{"t":439.48,"text":"午前2では、M&A手法の分類として問われるのだ！"},{"t":444.34,"text":"第2章。マーケティング理論。"},{"t":446.84,"text":"モノを売るための仕組みづくりなのだ。"},{"t":450.06,"text":"購買行動モデルから価格戦略まで、幅広く出るのだ！"},{"t":454.94,"text":"アイドマモデル。"},{"t":456.54,"text":"購買行動を、注意、興味、欲求、記憶、行動に分解した古典的モデル。"},{"t":464.18,"text":"特に、記憶のステップが特徴で、"},{"t":467.3,"text":"広告が中心だった時代のマーケティングモデル。"},{"t":470.9,"text":"午前2では、記憶を含むか？で見分ける問題があるのだ。"},{"t":476.08,"text":"購買心理の基礎なのだ！"},{"t":478.4,"text":"アイサスモデル。"},{"t":479.98,"text":"現代の検索時代を反映したモデル。"},{"t":482.94,"text":"注意、興味、検索、行動、共有。"},{"t":487.32,"text":"検索して比較検討し、購入後に共有する。"},{"t":491.8,"text":"この流れが、SNS時代に超重要。"},{"t":495.36,"text":"午前2でも、ネット時代特有の購買モデルはどれ？系でよく問われるのだ。"},{"t":501.76,"text":"共有による拡散を狙うなら、アイサスの理解が必須なのだー！"},{"t":507.04,"text":"不協和低減型購買。"},{"t":508.98,"text":"消費者が高関与だが、ブランド差異が小さいと感じるときの購買行動。"},{"t":515.06,"text":"購入後に「本当に正しい選択だったか」不安を感じ、それを解消しようとするのだ。"},{"t":522.82,"text":"アサエルの4つの製品タイプの一つで、高額商品の不動産や保険が典型例。"},{"t":529.56,"text":"午前2では、アサエルの購買類型の分類問題として出るのだ！"},{"t":535.42,"text":"セグメンテーション。"},{"t":536.56,"text":"市場を、地理的、人口統計、心理的、行動的、の4つに分けるのだ！"},{"t":544.2,"text":"人口統計は、年齢、性別、世帯、収入。"},{"t":549.6,"text":"心理的は、価値観、ライフスタイル。"},{"t":553.92,"text":"行動的は、購入頻度、特性。"},{"t":557.1,"text":"午前2は選択肢が混ざりやすいので、"},{"t":560.12,"text":"4分類を正確に覚える必要があるのだ。"},{"t":563.88,"text":"ターゲティング。"},{"t":565.52,"text":"セグメントの中から、勝てる市場を選ぶ作業。"},{"t":569.06,"text":"市場規模、競争状況、成長性、自社資源の観点から絞り込むのだ。"},{"t":575.74,"text":"午前2では、ターゲット選定の基準に関する正誤判定が多い。"},{"t":581.26,"text":"絞らない戦略はリスクなのだー！"},{"t":584.26,"text":"ポジショニング。"},{"t":585.62,"text":"顧客の頭の中で、自社はどの位置にいるか、を決定する作業。"},{"t":591.29,"text":"価格と品質などの座標軸で可視化し、"},{"t":593.98,"text":"競合との違いを明確にするのだ。"},{"t":597.16,"text":"午前2では、軸の選び方が正しいか？を問うのが定番。"},{"t":602.22,"text":"同じ市場でも、軸がズレると全てがズレるのだ！"},{"t":606.28,"text":"CRM。顧客関係管理。"},{"t":609.9,"text":"顧客データを使って長期的な関係を築き、"},{"t":613.46,"text":"顧客維持率を上げる手法なのだ！"},{"t":615.98,"text":"一般的に、新規顧客の獲得より、"},{"t":619.34,"text":"既存顧客の維持のほうが安いとされる理論に基づくのだ。"},{"t":623.96,"text":"午前2では、関係性強化が目的、と覚えればオッケーなのだ！"},{"t":629.88,"text":"LTV。顧客生涯価値。"},{"t":633.03,"text":"顧客が一生のうちにもたらす利益の合計を示すのだ。"},{"t":637.1,"text":"企業が、どれだけ広告費を使っても良いか？を判断する基準になる。"},{"t":643.0,"text":"午前2でも、LTVが高いほどどうなる？系の問題がよく出る。"},{"t":648.68,"text":"リピート顧客が利益の源泉なのだ！"},{"t":651.96,"text":"価格弾力性。"},{"t":653.73,"text":"価格が変化したとき、需要がどれだけ変化するかを示す指標。"},{"t":658.58,"text":"弾力性が高いと、価格変化に対して需要が大きく動く。"},{"t":664.19,"text":"必需品は弾力性が低く、贅沢品は弾力性が高いのが一般的。"},{"t":670.06,"text":"午前2では、価格弾力性の高低とその特徴が問われるのだ！"},{"t":675.68,"text":"ターゲットリターン価格設定。"},{"t":678.16,"text":"目標とする投資収益率を実現するように価格を設定する手法なのだ。"},{"t":684.42,"text":"コスト積み上げ型の価格設定の代表例。"},{"t":687.7,"text":"午前2では、投資収益率を目標にする価格設定方法として問われるのだ！"},{"t":694.06,"text":"コーズリレーテッドマーケティング。"},{"t":697.18,"text":"商品購入が社会貢献につながるマーケティング手法。"},{"t":701.14,"text":"売上の一部をNPOに寄付するなど、"},{"t":704.75,"text":"社会貢献と購買の組み合わせなのだ。"},{"t":707.7,"text":"午前2では、説明文がそのまま出るレベルの定番ワードなのだ！"},{"t":713.26,"text":"インバウンドマーケティング。"},{"t":715.36,"text":"顧客が自ら情報を探してやってくる前提で、"},{"t":719.16,"text":"有益なコンテンツを提供して引き寄せる手法。"},{"t":723.04,"text":"売り込み型の広告で押すのでなく、"},{"t":725.36,"text":"顧客が勝手に来る流れを作るのだ。"},{"t":728.46,"text":"午前2では、プッシュ型との違いが問われやすいのだ。"},{"t":732.78,"text":"バイラルマーケティング。"},{"t":734.88,"text":"口コミが連鎖して広がるよう設計されたマーケティング戦略。"},{"t":739.18,"text":"SNSと相性がよく、少ない広告費で爆発的に広がる可能性があるのだ。"},{"t":746.02,"text":"午前2では、口コミが自動で拡散、がキーワードなのだ！"},{"t":751.38,"text":"マルチサイドプラットフォーム。"},{"t":753.67,"text":"異なる複数の顧客グループをつなぐビジネスモデル。"},{"t":757.24,"text":"例えばメルカリの売り手と買い手、ユーチューブの視聴者と広告主など。"},{"t":763.06,"text":"一方の増加が他方の価値を高める、ネットワーク効果が重要。"},{"t":767.98,"text":"午前2の定番ワードなのだ！"},{"t":770.95,"text":"ラインエクステンション。"},{"t":772.48,"text":"既存ブランドを活用して、新しい製品バリエーションを展開するブランド戦略。"},{"t":778.7,"text":"同じブランド名で味、サイズ、色違いの新商品を投入するのが典型例。"},{"t":785.9,"text":"午前2では、ブランド戦略の分類として問われるのだ！"},{"t":790.7,"text":"ライフサイクルエクステンション。"},{"t":793.29,"text":"製品の衰退期に入った後も、市場や用途を広げて製品寿命を延ばす戦略。"},{"t":799.48,"text":"海外市場への展開や、新たな用途の開発が典型的な手法なのだ。"},{"t":805.84,"text":"午前2では、製品ライフサイクルの延長手法として問われるのだ！"},{"t":811.56,"text":"第3章。イノベーションと技術経営。"},{"t":815.34,"text":"新しい価値を生み出す力と、それを管理する手法なのだ！"},{"t":820.24,"text":"MOTの三段階と産学連携まで、完全にカバーするのだ！"},{"t":825.88,"text":"プロダクトイノベーション。"},{"t":827.95,"text":"製品自体の革新を指すのだ。"},{"t":830.28,"text":"性能向上、新素材、まったく新しい機能など。"},{"t":835.18,"text":"午前2は、プロセスイノベーションとの違いを必ず確認してくるので、"},{"t":840.56,"text":"要注意なのだ。"},{"t":842.4,"text":"ダイナミックケイパビリティ。"},{"t":844.59,"text":"環境変化を察知し、機会を捉え、資源を再構築することで、"},{"t":850.02,"text":"持続的競争優位を作る能力。"},{"t":852.9,"text":"午前2では、資源の再配置、がキーワード。"},{"t":857.64,"text":"環境変化に対応できる企業が生き残るのだ！"},{"t":860.86,"text":"エムオーティー。技術経営。"},{"t":864.16,"text":"技術を経営資源として活かし、事業化までつなげるマネジメント。"},{"t":869.15,"text":"魔の川、死の谷、ダーウィンの海の三段階の障壁を扱うのだ。"},{"t":875.14,"text":"午前2で頻繁に登場するのだ！"},{"t":877.68,"text":"魔の川。"},{"t":879.39,"text":"研究開発から製品開発への移行に存在する障壁のこと。"},{"t":884.22,"text":"研究の成果が製品化できるレベルに達しない段階で消えてしまうことを指すのだ。"},{"t":890.32,"text":"三段階の順番は、魔の川、死の谷、ダーウィンの海。"},{"t":895.84,"text":"午前2では、三段階のどの障壁の説明か？を問う問題が定番なのだ！"},{"t":902.36,"text":"死の谷。"},{"t":904.04,"text":"技術開発と事業化の間で、資金不足や人材不足が起き、"},{"t":909.38,"text":"プロジェクトが失敗しやすくなる段階のこと。"},{"t":912.5,"text":"午前2でも明確に問われるのだ！"},{"t":915.46,"text":"ダーウィンの海。"},{"t":916.72,"text":"事業化には成功したが、市場競争に勝ち残れず淘汰される段階のこと。"},{"t":922.67,"text":"三段階の最後の壁で、ここを越えてこそ真の事業成功なのだ。"},{"t":928.44,"text":"午前2では魔の川・死の谷とセットで問われるのだ！"},{"t":933.18,"text":"TLO。技術移転機関。"},{"t":935.66,"text":"大学の研究成果を特許化し、企業にライセンスする機関。"},{"t":940.26,"text":"Technology Licensing Organizationの略なのだ。"},{"t":944.74,"text":"大学発の技術を社会に橋渡しする役割を担うのだ。"},{"t":949.4,"text":"午前2では、TLO法に基づく承認・認定事業者の役割として問われるのだ！"},{"t":956.42,"text":"産学連携。"},{"t":958.54,"text":"企業と大学が共同で研究開発を行う仕組みなのだ。"},{"t":963.12,"text":"TLOや共同研究契約を通じて技術移転・事業化を進めるのが目的。"},{"t":969.6,"text":"知的財産の帰属や利益配分のルールを事前に決めておくことが重要。"},{"t":975.5,"text":"午前2では、共同研究における知財の取り扱いや役割分担が問われるのだ！"},{"t":982.5,"text":"ティアダウン。"},{"t":983.58,"text":"競合製品を分解・分析して、コスト構造や技術水準を把握する手法。"},{"t":990.66,"text":"リバースエンジニアリングの一形態で、ベンチマーキングに活用されるのだ。"},{"t":996.58,"text":"午前2では、競合製品の分解分析、がキーワードなのだ！"},{"t":1002.1,"text":"TRIZ。"},{"t":1003.34,"text":"特許を大量に分析して生まれた問題解決の技法なのだ。"},{"t":1008.2,"text":"問題に潜む矛盾を発明的に解決するための体系的な方法論。"},{"t":1013.78,"text":"ロシアで開発され、工学的な矛盾を創造的に乗り越えるのが目的なのだ。"},{"t":1020.14,"text":"午前2では、特許分析から生まれた発明的問題解決技法、がキーワードなのだ！"},{"t":1027.16,"text":"セキモデル。"},{"t":1028.6,"text":"暗黙知と形式知が循環して、知識が組織に広がるプロセス。"},{"t":1034.1,"text":"共同化、表出化、連結化、内面化の順番で、"},{"t":1039.22,"text":"知識がスパイラルアップするのだ！"},{"t":1041.68,"text":"共同化、表出化、連結化、内面化。"},{"t":1046.36,"text":"共同化は、暗黙知から暗黙知へ。"},{"t":1049.66,"text":"表出化は、暗黙知から形式知へ。"},{"t":1053.12,"text":"連結化は、形式知から形式知へ。"},{"t":1056.48,"text":"内面化は、形式知から暗黙知へ。"},{"t":1059.76,"text":"午前2では、どのプロセスが何から何への変換か？が問われる。"},{"t":1065.18,"text":"この4つの変換、順番とセットで覚えるのだ！"},{"t":1069.2,"text":"ティーオーシー。制約理論。"},{"t":1072.18,"text":"ボトルネックを特定し、全体のスループット最大化を目指す考え方。"},{"t":1077.9,"text":"部分最適ではなく、全体最適がポイント。"},{"t":1082.28,"text":"午前2では、制約が全体を決める、がキーワードなのだ！"},{"t":1087.4,"text":"ジャストインタイム。"},{"t":1089.02,"text":"必要なときに、必要なものだけ生産する方式。"},{"t":1093.42,"text":"プル型で、余計な在庫を持たないのが特徴。"},{"t":1097.22,"text":"午前2では、後工程引取り、がキーワード。"},{"t":1101.52,"text":"無駄を徹底排除する方式なのだ！"},{"t":1104.46,"text":"第4章。会計・財務と管理指標。"},{"t":1108.56,"text":"ここが合否を分ける、計算・財務エリアなのだ。"},{"t":1113.34,"text":"キャッシュの動きと利益の構造に注目するのだ！"},{"t":1117.28,"text":"営業利益の計算。"},{"t":1119.32,"text":"売上高から売上原価を引いたものが売上総利益。"},{"t":1123.52,"text":"売上総利益から販売費及び一般管理費を引いたものが営業利益。"},{"t":1129.36,"text":"午前2では、損益計算書の資料から営業利益を求める計算問題が頻出なのだ。"},{"t":1136.74,"text":"販管費を忘れずに引くことが重要なのだ！"},{"t":1140.54,"text":"連結財務諸表の基本。"},{"t":1142.38,"text":"親会社と子会社を一つの企業グループとして財務諸表をまとめる仕組みなのだ。"},{"t":1148.62,"text":"連結売上高を求めるときは、グループ内取引を消去する内部取引消去が必要。"},{"t":1155.5,"text":"子会社の範囲は、議決権の過半数を実質的に支配しているかどうかで判断するのだ。"},{"t":1162.92,"text":"午前2では、内部取引消去と支配力基準がポイントなのだ！"},{"t":1167.94,"text":"債務超過。"},{"t":1168.86,"text":"負債の合計が資産の合計を上回った状態のこと。"},{"t":1173.72,"text":"純資産がマイナスになった状態で、倒産リスクが極めて高い。"},{"t":1179.3,"text":"午前2では、貸借対照表のどの状態が債務超過か？を問うのだ！"},{"t":1185.02,"text":"エヌピーブイ。"},{"t":1186.52,"text":"将来キャッシュフローを割引率で現在価値に戻し、"},{"t":1190.76,"text":"投資価値を評価する指標。"},{"t":1192.92,"text":"プラスなら投資すべき。"},{"t":1195.0,"text":"午前2の計算問題で頻出。"},{"t":1197.5,"text":"割引計算の理解が必須なのだ！"},{"t":1200.52,"text":"IRR。内部収益率法。"},{"t":1203.88,"text":"NPVがゼロになる割引率を求め、その水準が資本コストを上回れば投資すべき、と判断する手法。"},{"t":1212.96,"text":"NPVと同じく時間価値を考慮する点が重要。"},{"t":1216.8,"text":"午前2では、NPVとIRRはともに時間価値を考慮する、という共通点がポイントなのだ！"},{"t":1225.3,"text":"アールオーアイ。"},{"t":1226.92,"text":"投資額に対する利益率。"},{"t":1229.26,"text":"シンプルだが経営層が好む指標。"},{"t":1232.14,"text":"NPVと違い、時間価値を考慮しない、ことが特徴。"},{"t":1237.18,"text":"午前2でもよく比較されるのだ。"},{"t":1239.6,"text":"ディーシーエフ法。"},{"t":1241.42,"text":"NPVの基礎。"},{"t":1243.02,"text":"将来キャッシュフローを現在価値へ割り引く手法。"},{"t":1246.64,"text":"割引率をどう設定するかで結果が変わるのだ。"},{"t":1250.5,"text":"午前2で長文計算問題が、そのまま出ることもあるのだ。"},{"t":1255.46,"text":"営業キャッシュフロー、間接法。"},{"t":1258.06,"text":"純利益から、減価償却を足し、"},{"t":1261.78,"text":"売上債権増減、棚卸増減、仕入債務増減を調整して求めるのだ。"},{"t":1268.7,"text":"午前2でも非常に出る。"},{"t":1270.66,"text":"覚えれば確実に得点できるのだ！"},{"t":1273.6,"text":"棚卸資産の増減。"},{"t":1275.76,"text":"棚卸が増えるイコール、キャッシュが減る。"},{"t":1279.28,"text":"棚卸が減るイコール、キャッシュが増える。"},{"t":1282.31,"text":"間接法の、増えたらマイナス、は絶対覚えるのだ！"},{"t":1287.02,"text":"仕入債務の増減。"},{"t":1289.26,"text":"買掛金が増えるということは、お金をまだ払ってない、"},{"t":1293.7,"text":"つまりキャッシュが残ってるので、プラス調整。"},{"t":1297.1,"text":"間接法の必須ポイントなのだ！"},{"t":1300.14,"text":"投資活動のキャッシュフロー。"},{"t":1302.5,"text":"キャッシュフロー計算書は、営業・投資・財務の3区分。"},{"t":1308.08,"text":"投資活動は、固定資産の取得・売却、有価証券の取得・売却などが該当するのだ。"},{"t":1316.78,"text":"固定資産を買えばマイナス、売ればプラス、と理解するのだ。"},{"t":1321.9,"text":"午前2では、どの取引がどの区分か？を問うのが定番なのだ！"},{"t":1327.44,"text":"減損会計。"},{"t":1328.84,"text":"資産の価値が回収不能になったとき、"},{"t":1331.84,"text":"帳簿価額を回収可能価額まで減額する会計処理。"},{"t":1336.66,"text":"午前2では、帳簿価額と回収可能価額の比較、が問われるのだ。"},{"t":1342.52,"text":"固定資産の回収可能価額。"},{"t":1345.34,"text":"使用価値と正味売却価額の、どちらか高いほうを使う。"},{"t":1350.18,"text":"減損会計の基本で、午前2にも出るのだ。"},{"t":1353.78,"text":"操業度。"},{"t":1355.18,"text":"生産能力に対して実際にどれだけ稼働したか、の割合。"},{"t":1359.88,"text":"操業度が低いと固定費の負担が重くなる。"},{"t":1363.66,"text":"午前2では、生産性指標の定義として問われるのだ！"},{"t":1368.36,"text":"活動基準原価計算。ABCコスト法。"},{"t":1372.7,"text":"製品ごとのコストを、活動ドライバに基づいて精緻に配賦する手法。"},{"t":1378.48,"text":"従来の直接費比例配賦では見えなかった、活動ごとのコスト構造を明らかにできるのだ。"},{"t":1385.82,"text":"午前2では、間接費を活動ベースで配賦する、がキーワードなのだ！"},{"t":1391.8,"text":"バランススコアカード。"},{"t":1393.51,"text":"財務、顧客、業務プロセス、学習と成長の4視点で戦略を管理。"},{"t":1400.6,"text":"短期、長期のバランスをとるのだ。"},{"t":1403.56,"text":"午前2でも頻出の、定番理論なのだ！"},{"t":1407.22,"text":"EVA。経済的付加価値。"},{"t":1410.54,"text":"EVAは「会計上の利益」じゃなくて、資本コストを引いた後に本当に価値が残ったかを見る指標なのだ！"},{"t":1419.86,"text":"黒字でも価値毀損になるのがEVAの怖いところなのだ！"},{"t":1424.28,"text":"EVA＝NOPAT（税引後営業利益）−投下資本×WACC"},{"t":1432.76,"text":"ポイントは「資本コスト率」じゃなくて、投下資本×WACCという「資本コスト額」を引くことなのだ！"},{"t":1442.5,"text":"午前Ⅱのひっかけは「×投下資本」が抜けた式と、「黒字なら価値創造」と決めつける選択肢なのだ！"},{"t":1451.52,"text":"第5章。組織・人事・リーダーシップ。"},{"t":1456.44,"text":"午前2の企業活動領域で毎年複数問出る、人と組織の話なのだ！"},{"t":1462.64,"text":"X理論・Y理論。"},{"t":1462.64,"text":"ダグラス・マグレガーが提唱した、人間観の2モデル。"},{"t":1470.12,"text":"X理論は、人間は本来仕事が嫌いで、強制・命令・報酬がないと動かない、という考え方。"},{"t":1479.56,"text":"Y理論は、人間は自ら進んで働き、自己実現を求める、という考え方。"},{"t":1487.28,"text":"午前2では、X理論とY理論のどちらの説明か？を問う問題が定番なのだ！"},{"t":1494.48,"text":"X理論＝アメとムチ、Y理論＝自律と成長、と覚えるのだ！"},{"t":1500.96,"text":"SL理論。"},{"t":1502.68,"text":"ハーシィとブランチャードが提唱した、状況対応型リーダーシップ理論なのだ。"},{"t":1508.72,"text":"部下の成熟度に応じて、リーダーシップスタイルを変えるべきという考え方。"},{"t":1514.34,"text":"成熟度が低い部下には指示型、成熟度が高い部下には委任型が有効。"},{"t":1520.78,"text":"午前2では、成熟度に応じてスタイルが変化するという点がポイント。"},{"t":1526.52,"text":"コンティンジェンシー理論の代表例として問われることも多いのだ！"},{"t":1531.2,"text":"コンティンジェンシー理論。"},{"t":1533.3,"text":"最適なリーダーシップは状況によって異なる、という考え方なのだ。"},{"t":1538.84,"text":"唯一の正解はなく、環境や部下の状態に応じて変えるべき、というのが本質。"},{"t":1545.8,"text":"午前2では、状況に応じてリーダーシップを変える、がキーワードなのだ！"},{"t":1552.22,"text":"コッターの変革の8段階。"},{"t":1554.14,"text":"ジョン・コッターが提唱した、組織変革を成功させるための8ステップ。"},{"t":1560.67,"text":"危機意識の醸成、変革推進チームの形成、ビジョンの策定と伝達、"},{"t":1567.24,"text":"短期的な成果の創出、そして変革を企業文化に定着させる流れなのだ。"},{"t":1573.78,"text":"午前2では、変革を生み出すリーダーシップに求められる機能として問われるのだ。"},{"t":1579.94,"text":"変革は戦略立案だけでなく、人を動かすことが本質、というのがポイントなのだ！"},{"t":1586.96,"text":"ハロー効果。"},{"t":1587.96,"text":"人事考課で起きやすい認知バイアスのひとつ。"},{"t":1591.82,"text":"ある一点が目立つと、その印象が全体の評価を歪めてしまう現象なのだ。"},{"t":1598.0,"text":"例えば、第一印象が良いと他の能力も高く評価してしまう、といった具合。"},{"t":1604.74,"text":"午前2では、人事考課における考課者の陥りやすい傾向として問われるのだ！"},{"t":1610.9,"text":"コンピテンシモデル。"},{"t":1612.72,"text":"高業績者に共通する行動特性を明らかにし、"},{"t":1617.1,"text":"それを人材育成や採用の基準にするモデルなのだ。"},{"t":1621.36,"text":"スキルや知識だけでなく、行動パターンや思考特性も含むのが特徴。"},{"t":1627.02,"text":"午前2では、高業績者の行動特性を基準にする、がキーワードなのだ！"},{"t":1634.16,"text":"OKR。"},{"t":1634.36,"text":"Objectives and Key Resultsの略。"},{"t":1637.78,"text":"組織の目標を、定性的な目標と、それを測る定量的な主要結果で管理する手法。"},{"t":1645.0,"text":"四半期ごとに設定し、達成率60〜70%を良しとする野心的な目標設定が特徴。"},{"t":1654.52,"text":"午前2では、MBOとの違いに注意。"},{"t":1658.7,"text":"OKRは全社公開で野心的目標、MBOは個人評価と連動、と覚えるのだ！"},{"t":1666.14,"text":"第6章。最新技術とシステム戦略。"},{"t":1670.0,"text":"DX時代の必須知識なのだ。"},{"t":1673.08,"text":"クラウド、AI、IoTから分析基盤まで一気に攻略するのだ！"},{"t":1679.18,"text":"シーピーエス。サイバーフィジカルシステム。"},{"t":1682.94,"text":"実世界のデータをセンサで収集し、サイバー空間で解析、"},{"t":1688.1,"text":"そして現実世界にフィードバックする仕組み。"},{"t":1691.8,"text":"製造業やスマートシティで必須。"},{"t":1694.08,"text":"午前2でド定番のテクノロジーなのだ！"},{"t":1697.2,"text":"インダストリー4.0。"},{"t":1698.96,"text":"ドイツ発の産業デジタル化構想。"},{"t":1701.92,"text":"IoT、AI、CPSを組み合わせてスマート工場を実現するのだ。"},{"t":1709.0,"text":"午前2でも、CPSとの違いを絡めて出題されるのだ。"},{"t":1714.24,"text":"SoE、SoR、SoI。"},{"t":1716.82,"text":"SoEは顧客接点系。"},{"t":1719.32,"text":"SoRは基幹系。"},{"t":1721.2,"text":"SoIは分析系。"},{"t":1723.06,"text":"企業システムを3種類に分類する考え方なのだ。"},{"t":1727.4,"text":"午前2のシステム戦略領域で頻出。"},{"t":1730.56,"text":"SoEは、関係性強化、がキーワードなのだ！"},{"t":1734.86,"text":"プロビジョニング。"},{"t":1734.86,"text":"クラウドのリソース確保や、ユーザアカウントの発行、"},{"t":1740.78,"text":"アクセス権の設定などを、需要に応じて自動で行う仕組みなのだ。"},{"t":1746.42,"text":"午前2では、ID管理や、サービス提供の迅速化という文脈で出るのだ。"},{"t":1753.4,"text":"エッジコンピューティング。"},{"t":1755.0,"text":"データ処理をクラウドではなく、"},{"t":1757.24,"text":"デバイスの近く、つまりエッジで実行する仕組みなのだ！"},{"t":1761.72,"text":"リアルタイム性が重要な工場ロボット、自動運転、監視カメラなどで使われるのだ。"},{"t":1769.02,"text":"午前2では、遅延の低減、帯域コスト削減、リアルタイム制御、の3点が問われる。"},{"t":1777.28,"text":"クラウドとエッジの役割分担を理解するのが重要なのだ！"},{"t":1781.84,"text":"データレイクと、データウェアハウス。"},{"t":1784.92,"text":"データレイクは生データをそのまま貯める大容量ストレージ。"},{"t":1789.66,"text":"DWHは構造化された分析用データベースなのだ！"},{"t":1794.16,"text":"午前2では、用途の違い、処理前か処理後か、品質の違い、を問われるのだ。"},{"t":1801.2,"text":"分析基盤の問題でほぼ毎年出るのだ！"},{"t":1804.94,"text":"AI。機械学習とディープラーニング。"},{"t":1808.46,"text":"教師あり学習は、正解ラベル付きデータで学習する。"},{"t":1813.1,"text":"教師なし学習は、正解ラベルなしデータからパターンを見つける。"},{"t":1818.28,"text":"ディープラーニングは多層ニューラルネットワークにより特徴量を自動学習するのがポイント。"},{"t":1824.73,"text":"従来は人間が設定していた、どこに注目するか、をAIが自力で見つけ出すのだ。"},{"t":1832.32,"text":"AIは学習データの偏りに弱い、という限界もセットで覚えるのだ！"},{"t":1838.42,"text":"データマイニングとクラスタリング。"},{"t":1840.98,"text":"大量データから有益なパターンや規則性を発見する技術がデータマイニング。"},{"t":1846.98,"text":"クラスタリングは、類似した属性を持つデータをグループ化する分析手法なのだ。"},{"t":1853.36,"text":"顧客を属性でグループ化して購買傾向を予測するのが典型的な使い方。"},{"t":1859.06,"text":"午前2では、大量データから購買傾向を予測するシステムとして問われるのだ！"},{"t":1866.46,"text":"IoT。M2M、LPWA、センサネットワーク。"},{"t":1872.3,"text":"IoTはモノがネットにつながる仕組み。"},{"t":1874.86,"text":"M2Mは、機械同士が自動で通信。"},{"t":1878.0,"text":"LPWAは、低電力で長距離。"},{"t":1881.96,"text":"センサネットは、無線で多点観測。"},{"t":1884.92,"text":"ポイントは、省電力、リアルタイム性、帯域制約を理解すること。"},{"t":1892.1,"text":"IoTは技術戦略領域の常連なのだ！"},{"t":1895.08,"text":"システムアーキテクチャ。"},{"t":1896.79,"text":"レイヤー化は、UI、アプリ、DBを分離し、変更しやすくすること。"},{"t":1903.69,"text":"疎結合は、依存を減らし独立性を高めること。"},{"t":1908.14,"text":"APIエコノミーは、外部とつながり価値を拡張すること。"},{"t":1912.94,"text":"午前2では、変更容易性、再利用性、独立性、を軸に問われる。"},{"t":1920.14,"text":"設計思想を理解すれば迷わないのだ！"},{"t":1923.4,"text":"回帰分析。単回帰と重回帰。"},{"t":1926.96,"text":"単回帰は、1つの説明変数。"},{"t":1930.12,"text":"重回帰は、複数説明変数。"},{"t":1932.94,"text":"午前2では、因果関係ではなく相関である、ことを理解しているかが問われる。"},{"t":1939.8,"text":"IPAは、説明変数の相関が高すぎると多重共線性が起きる、という罠も好きなのだ。"},{"t":1947.64,"text":"需要予測モデル。"},{"t":1949.58,"text":"移動平均法は、過去データを均等に平均。"},{"t":1953.3,"text":"指数平滑法は、直近データを多めに反映。"},{"t":1957.44,"text":"需要変動が激しいなら指数平滑。"},{"t":1960.9,"text":"安定しているなら移動平均。"},{"t":1963.4,"text":"ここを押さえれば統計問題の半分は勝てるのだ！"},{"t":1967.78,"text":"EVM。アーンドバリューマネジメント。"},{"t":1970.4,"text":"プロジェクト管理で使う、価値ベースの進捗把握の手法なのだ！"},{"t":1975.72,"text":"PV、計画値。"},{"t":1978.14,"text":"EV、出来高。"},{"t":1980.24,"text":"AC、実コスト。"},{"t":1982.14,"text":"EVがPVより小さいならスケジュール遅延。"},{"t":1985.92,"text":"EVがACより小さいならコスト超過。"},{"t":1989.54,"text":"この2つの対比を覚えるだけでほぼ解けるのだ！"},{"t":1993.0,"text":"第7章。セキュリティとリスク管理。"},{"t":1996.28,"text":"守りの要、セキュリティなのだ。"},{"t":1999.12,"text":"攻撃手法から政府の対策まで幅広くなのだ！"},{"t":2002.84,"text":"ビーシーエム。"},{"t":2004.3,"text":"災害やシステム障害時でも事業を継続するためのマネジメント。"},{"t":2009.44,"text":"BCPは計画で、BCMは運用含む包括概念。"},{"t":2014.9,"text":"午前2でもガチ頻出。"},{"t":2016.78,"text":"レジリエンスとセットで覚えるのだ！"},{"t":2019.46,"text":"レジリエンス。"},{"t":2020.86,"text":"不測の事態が起きた際の、復元力、持ちこたえる力のこと。"},{"t":2026.2,"text":"完全にリスク回避するのではなく、"},{"t":2029.02,"text":"被害を受けてもすぐ立ち直ること。"},{"t":2031.5,"text":"午前2ではBCM文脈でよく出るのだ。"},{"t":2034.92,"text":"イスマップ。"},{"t":2036.28,"text":"政府向けクラウドサービスのセキュリティ評価制度。"},{"t":2039.96,"text":"ガバナンス基準、マネジメント基準、管理策基準などから構成される。"},{"t":2046.32,"text":"午前2のセキュリティ領域で頻出なのだ！"},{"t":2049.92,"text":"クリプトレック暗号リスト。"},{"t":2051.78,"text":"電子政府が利用すべき暗号技術の一覧。"},{"t":2055.56,"text":"推奨、と、推奨候補、の違いを問われるのだ。"},{"t":2060.46,"text":"午前2では暗号の分類問題としてよく出るのだ。"},{"t":2064.22,"text":"オーシーエスピー。"},{"t":2065.92,"text":"証明書の失効状態をオンラインで確認するプロトコル。"},{"t":2070.46,"text":"定期発行のCRLよりも、リアルタイムに近い確認が可能なのだ。"},{"t":2076.34,"text":"午前2に固定のように毎年出る重要ワードなのだ！"},{"t":2080.56,"text":"ストアードクロスサイトスクリプティング。"},{"t":2083.21,"text":"ウェブアプリに保存された悪意あるスクリプトが、"},{"t":2086.58,"text":"閲覧ユーザのブラウザで実行される攻撃。"},{"t":2090.18,"text":"最も危険度の高いクロスサイトスクリプティング。"},{"t":2093.92,"text":"午前2でも必須なのだ。"},{"t":2095.8,"text":"ノーティス。"},{"t":2096.98,"text":"NICTがIoT機器の弱いパスワードを調査し、ISPに情報を通知。"},{"t":2103.72,"text":"そしてISPからユーザに注意喚起を行う取り組み。"},{"t":2108.0,"text":"午前2では、誰が調査して誰が通知するか、の流れが問われるのだ！"},{"t":2114.06,"text":"第8章。法務・契約・分析手法。"},{"t":2118.58,"text":"試験で落としやすい法律の論点と、頻出の分析手法を固めるのだ！"},{"t":2124.58,"text":"準委任と請負。"},{"t":2125.88,"text":"準委任は、作業の実施を委託し、成果保証はなし。"},{"t":2131.56,"text":"請負は、成果物の完成が義務。"},{"t":2135.08,"text":"午前2では、どの工程は準委任か？を問う問題が定番なのだ！"},{"t":2140.86,"text":"モデル取引・契約書。"},{"t":2143.52,"text":"IPAが公開する、システム開発における標準的な契約形態のガイドライン。"},{"t":2150.68,"text":"要件定義は準委任、設計・開発は請負、というのが基本形なのだ。"},{"t":2157.9,"text":"第二版では、要件定義も当事者の選択肢として請負型も認めているのだ。"},{"t":2164.44,"text":"午前2では、どのフェーズにどの契約形態が対応するか、が問われるのだ！"},{"t":2177.92,"text":"下請法。"},{"t":2179.14,"text":"ITでも普通に出題されるが、多くの受験者が落とす論点なのだ。"},{"t":2181.3,"text":"支払遅延の禁止、買いたたきの禁止、受領拒否の禁止、"},{"t":2187.04,"text":"不当な返品の禁止、そして書面交付義務。"},{"t":2191.04,"text":"IPAは、親事業者、つまり発注側に義務がある、"},{"t":2196.12,"text":"という構造理解を問うのだ！"},{"t":2198.44,"text":"特定商取引法。"},{"t":2200.56,"text":"ECサイトには価格、支払時期、引渡時期、"},{"t":2205.08,"text":"返品条件などの表示義務があるのだ。"},{"t":2208.48,"text":"午前2では、表示義務のある法律はどれ？系でよく出るのだ！"},{"t":2213.96,"text":"電子帳簿保存法。"},{"t":2215.82,"text":"国税関係帳簿を電磁的記録で保存するためのルールを定めた法律。"},{"t":2221.58,"text":"可視性の確保や訂正削除履歴の管理が義務付けられているのだ。"},{"t":2226.78,"text":"午前2では、磁気媒体保存に関する法律として問われるのだ！"},{"t":2232.02,"text":"個人情報保護法。"},{"t":2233.92,"text":"午前2では技術ではなく法律の論点が出るのだ。"},{"t":2237.8,"text":"要配慮個人情報の扱いや、委託先の監督義務、利用目的の特定など。"},{"t":2245.36,"text":"IPAは、同意なく第三者提供できる例外、をよく問うのだ。"},{"t":2251.1,"text":"例えば、生命や財産の保護、国の法令に基づく場合などなのだ。"},{"t":2256.52,"text":"著作権法とAI学習。"},{"t":2259.64,"text":"他人の著作物をAIの学習データとして利用する場合、"},{"t":2264.54,"text":"情報解析を目的とする利用であれば著作権法上の例外規定により原則として利用可能なのだ。"},{"t":2272.64,"text":"ただし著作物に表現された思想・感情を享受する目的での利用は許可されないのだ。"},{"t":2279.78,"text":"午前2では、AI学習における著作権の例外規定の理解が問われるのだ！"},{"t":2286.22,"text":"フェアユース。"},{"t":2287.24,"text":"著作権者の許諾なしに著作物を利用できる場合を認める考え方。"},{"t":2292.96,"text":"アメリカの著作権法に存在する概念で、日本の著作権法には明文規定がない。"},{"t":2300.26,"text":"午前2では、日本には一般的フェアユース規定がない点がひっかけになるのだ！"},{"t":2306.16,"text":"RoHS指令。"},{"t":2307.58,"text":"欧州連合が制定した、電気・電子機器における特定有害物質の使用制限指令。"},{"t":2315.4,"text":"鉛、水銀、カドミウムなど基準値を超える有害物質の使用を禁止するのだ。"},{"t":2322.72,"text":"午前2では、EU発の有害物質規制として問われるのだ！"},{"t":2327.64,"text":"電子計算機使用詐欺。"},{"t":2330.16,"text":"コンピュータに虚偽の情報を入力したり、不正な指令を与えることで、"},{"t":2335.5,"text":"財産上の利益を不正に取得する行為を処罰する刑法上の罪。"},{"t":2341.22,"text":"普通の詐欺と違い、人を騙すのではなくコンピュータを操作するのがポイント。"},{"t":2347.16,"text":"午前2では、刑法上の罪の分類として問われるのだ！"},{"t":2351.96,"text":"資金決済法と暗号資産。"},{"t":2354.58,"text":"資金決済法は、暗号資産の定義・規制を定める法律なのだ。"},{"t":2360.8,"text":"暗号資産は法定通貨や電子マネーとは異なり、不特定多数の者との取引に使用できる財産的価値。"},{"t":2369.56,"text":"午前2では、暗号資産の法的定義として問われるのだ！"},{"t":2374.44,"text":"バスタブ曲線。"},{"t":2376.02,"text":"機械や製品の故障率の変化を時系列で示した曲線なのだ。"},{"t":2381.32,"text":"初期故障期、偶発故障期、摩耗故障期の3段階に分かれる。"},{"t":2387.07,"text":"偶発故障期は故障率が低く安定していて、これが通常の使用期間に当たるのだ。"},{"t":2394.16,"text":"午前2では、偶発故障期の特徴として問われるのだ！"},{"t":2398.86,"text":"特性要因図。フィッシュボーン。"},{"t":2401.88,"text":"原因を体系的に分類する図。"},{"t":2404.66,"text":"人、機械、方法、材料、環境などに分けて整理するのだ。"},{"t":2410.9,"text":"品質管理問題の定番で、午前2にも出るのだ！"},{"t":2415.06,"text":"親和図。"},{"t":2416.52,"text":"ブレーンストーミングで得たアイデアや情報を、類似性・親和性でグルーピングする手法。"},{"t":2423.36,"text":"KJ法とも呼ばれ、多数の意見を構造化するのに使われるのだ。"},{"t":2429.06,"text":"午前2では、新QC七つ道具の一つとして問われるのだ！"},{"t":2434.02,"text":"DMAIC。シックスシグマの改善サイクル。"},{"t":2438.28,"text":"Define、Measure、Analyze、Improve、Controlの5段階。"},{"t":2444.94,"text":"定義、測定、分析、改善、管理、と順番に覚えるのだ。"},{"t":2451.8,"text":"業務の効率や品質の継続的改善を目的としたシックスシグマの中核手法なのだ。"},{"t":2459.02,"text":"午前2では、各フェーズの説明と対応関係が問われるのだ！"},{"t":2464.14,"text":"デルファイ法。"},{"t":2465.52,"text":"専門家に繰り返しアンケートを行い、"},{"t":2468.72,"text":"フィードバックを通して意見を収束させる予測手法。"},{"t":2472.72,"text":"午前2の図問題で頻出。"},{"t":2474.98,"text":"未来予測手法の超定番なのだ！"},{"t":2477.74,"text":"ECRS。"},{"t":2479.12,"text":"業務改善のフレームワーク。"},{"t":2481.96,"text":"排除できないか、結合できないか、交換できないか、簡素化できないか、の4観点。"},{"t":2489.56,"text":"まず排除から検討するのが鉄則なのだ。"},{"t":2493.06,"text":"午前2では、業務改善フレームワークの選択問題として出るのだ！"},{"t":2498.8,"text":"理想システム法。"},{"t":2500.3,"text":"現状にとらわれず、まず理想的なシステムを想定し、"},{"t":2504.98,"text":"次に現状との差から問題点を洗い出して改善案を策定する手法。"},{"t":2510.74,"text":"あるべき姿から逆算して問題を特定するアプローチなのだ。"},{"t":2515.44,"text":"午前2では、理想から現状差異を逆算する手法として問われるのだ！"},{"t":2521.0,"text":"これで全項目、本当のコンプリートなのだ！"},{"t":2525.02,"text":"何度も聞いて、合格点をもぎ取るのだー！"}];
+const audio = document.getElementById('audio');
+const loadingMsg = document.getElementById('loading-msg');
+const player = document.getElementById('player');
+const btnPlay = document.getElementById('btn-play');
+const progressFill = document.getElementById('progress-fill');
+const progressThumb = document.getElementById('progress-thumb');
+const progressTrack = document.getElementById('progress-track');
+const timeCurrent = document.getElementById('time-current');
+const timeTotal = document.getElementById('time-total');
+const pillSpeed = document.getElementById('pill-speed');
+const pillLoop = document.getElementById('pill-loop');
+const pillChapter = document.getElementById('pill-chapter');
+const pillSleep = document.getElementById('pill-sleep');
+const speedLabel = document.getElementById('speed-label');
+const chapterPanel = document.getElementById('chapter-panel');
+const chapterList = document.getElementById('chapter-list');
+const chapterLabel = document.getElementById('chapter-label');
+const sleepPanel = document.getElementById('sleep-panel');
+const sleepGrid = document.getElementById('sleep-grid');
+const sleepRemaining = document.getElementById('sleep-remaining');
+let sleepTimer=null,sleepEndTime=null,sleepInterval=null,activeSleepBtn=null,isDragging=false;
+const AUDIO_URL='https://github.com/clearcareaosept22-blip/audio-tools/releases/download/it-strategist-v1/it-strategist-am2.mp3';
+audio.src=AUDIO_URL;audio.load();
+audio.addEventListener('loadedmetadata',()=>{loadingMsg.style.display='none';player.classList.add('active');setupMediaSession();},{once:true});
+audio.addEventListener('error',()=>{loadingMsg.textContent='❌ 音声の読み込みに失敗しました';},{once:true});
+const STORAGE_KEY='it_strategist_pos';
+const TOTAL_KEY='it_strategist_total';
+const FULL_DURATION=2528.896;
+let totalSec=parseFloat(localStorage.getItem(TOTAL_KEY)||'0');
+let lastCT=null;
+const statsTime=document.getElementById('stats-time');
+const statsLaps=document.getElementById('stats-laps');
+function fmtTotal(s){
+  s=Math.round(s);
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  if(h>0)return h+'時間'+m+'分'+String(sec).padStart(2,'0')+'秒';
+  return m+'分'+String(sec).padStart(2,'0')+'秒';
+}
+function updateStats(){
+  statsTime.textContent=fmtTotal(totalSec);
+  statsLaps.textContent='≈ '+(totalSec/FULL_DURATION).toFixed(1)+'周';
+}
+updateStats();
+audio.addEventListener('play',()=>{lastCT=audio.currentTime;});
+audio.addEventListener('timeupdate',()=>{
+  if(lastCT===null)return;
+  const delta=audio.currentTime-lastCT;
+  if(delta>0&&delta<3){totalSec+=delta;updateStats();}
+  lastCT=audio.currentTime;
+});
+audio.addEventListener('pause',()=>{lastCT=null;localStorage.setItem(TOTAL_KEY,totalSec.toFixed(1));});
+audio.addEventListener('ended',()=>{lastCT=null;localStorage.setItem(TOTAL_KEY,totalSec.toFixed(1));});
+const statsResetBtn=document.getElementById('stats-reset');
+let resetPending=false,resetTimer=null;
+statsResetBtn.addEventListener('click',()=>{
+  if(!resetPending){
+    resetPending=true;
+    statsResetBtn.textContent='本当にリセット？';
+    statsResetBtn.style.borderColor='var(--accent)';
+    statsResetBtn.style.color='var(--accent)';
+    resetTimer=setTimeout(()=>{
+      resetPending=false;
+      statsResetBtn.textContent='リセット';
+      statsResetBtn.style.borderColor='';
+      statsResetBtn.style.color='';
+    },3000);
+  } else {
+    clearTimeout(resetTimer);
+    resetPending=false;
+    statsResetBtn.textContent='リセット';
+    statsResetBtn.style.borderColor='';
+    statsResetBtn.style.color='';
+    totalSec=0;localStorage.removeItem(TOTAL_KEY);updateStats();
+  }
+});
+const toast=document.getElementById('toast');
+let saveTimer=null;
+
+function showToast(msg){
+  toast.textContent=msg;toast.classList.add('show');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>toast.classList.remove('show'),3000);
+}
+
+function savePosition(){
+  if(audio.duration&&isFinite(audio.duration)&&audio.currentTime>0){
+    localStorage.setItem(STORAGE_KEY,audio.currentTime.toFixed(1));
+  }
+}
+
+let lastSaved=0;
+function maybeSave(){
+  const now=Date.now();
+  if(now-lastSaved>5000){lastSaved=now;savePosition();}
+}
+
+window.addEventListener('beforeunload',savePosition);
+window.addEventListener('pagehide',savePosition);
+
+
+function restorePosition(){
+  const saved=localStorage.getItem(STORAGE_KEY);
+  if(!saved||parseFloat(saved)<1)return;
+  const t=parseFloat(saved);
+  if(t<audio.duration-5){
+    audio.currentTime=t;
+    showToast('前回の続き（'+formatTime(t)+'）から再生します');
+  }
+}
+btnPlay.addEventListener('click',()=>audio.paused?audio.play():audio.pause());
+audio.addEventListener('play',()=>{btnPlay.innerHTML='&#9646;&#9646;';});
+audio.addEventListener('pause',()=>{btnPlay.innerHTML='&#9654;';});
+audio.addEventListener('ended',()=>{btnPlay.innerHTML='&#9654;';});
+document.getElementById('btn-back10').addEventListener('click',()=>seek(-10));
+document.getElementById('btn-back5').addEventListener('click',()=>seek(-5));
+document.getElementById('btn-fwd5').addEventListener('click',()=>seek(5));
+document.getElementById('btn-fwd10').addEventListener('click',()=>seek(10));
+function seek(d){audio.currentTime=Math.max(0,Math.min(audio.duration||0,audio.currentTime+d));}
+audio.addEventListener('timeupdate',()=>{updateProgress();maybeSave();});
+audio.addEventListener('loadedmetadata',()=>{timeTotal.textContent=formatTime(audio.duration);updateProgress();restorePosition();});
+function updateProgress(){
+  if(isDragging)return;
+  const p=audio.duration?(audio.currentTime/audio.duration)*100:0;
+  progressFill.style.width=p+'%';progressThumb.style.left=p+'%';timeCurrent.textContent=formatTime(audio.currentTime);
+}
+function getSeekRatio(x){const r=progressTrack.getBoundingClientRect();return Math.max(0,Math.min(1,(x-r.left)/r.width));}
+progressTrack.addEventListener('pointerdown',e=>{isDragging=true;progressTrack.classList.add('dragging');progressTrack.setPointerCapture(e.pointerId);scrubTo(e.clientX);});
+progressTrack.addEventListener('pointermove',e=>{if(isDragging)scrubTo(e.clientX);});
+progressTrack.addEventListener('pointerup',e=>{if(!isDragging)return;isDragging=false;progressTrack.classList.remove('dragging');scrubTo(e.clientX);});
+progressTrack.addEventListener('pointercancel',()=>{isDragging=false;progressTrack.classList.remove('dragging');});
+function scrubTo(x){
+  const r=getSeekRatio(x);
+  progressFill.style.width=(r*100)+'%';progressThumb.style.left=(r*100)+'%';
+  timeCurrent.textContent=formatTime(r*(audio.duration||0));
+  if(audio.duration)audio.currentTime=r*audio.duration;
+}
+const speeds=[0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.5,3.0];
+const speedRange=document.getElementById('speed-range');
+const speedSliderVal=document.getElementById('speed-slider-val');
+function setSpeed(s){
+  audio.playbackRate=s;
+  const lbl=s+'×';speedLabel.textContent=lbl;speedSliderVal.textContent=lbl;
+  pillSpeed.classList.toggle('active',s!==1.0);
+  const p=(speeds.indexOf(s)/(speeds.length-1))*100;
+  speedRange.style.background='linear-gradient(to right,var(--accent) 0%,var(--accent) '+p+'%,var(--surface2) '+p+'%)';
+}
+speedRange.addEventListener('input',()=>setSpeed(speeds[parseInt(speedRange.value)]));
+let loopOn=false;
+pillLoop.addEventListener('click',()=>{loopOn=!loopOn;audio.loop=loopOn;pillLoop.classList.toggle('active',loopOn);});
+CHAPTERS.forEach((ch,i)=>{
+  const btn=document.createElement('button');btn.className='chapter-btn';
+  btn.innerHTML='<span>'+ch.text+'</span><span class="chapter-time">'+formatTime(ch.t)+'</span>';
+  btn.addEventListener('click',()=>{audio.currentTime=ch.t;if(!audio.paused)audio.play();chapterPanel.classList.remove('open');pillChapter.classList.remove('active');});
+  chapterList.appendChild(btn);
+});
+function updateChapter(){
+  const t=audio.currentTime;let cur=-1;
+  for(let i=0;i<CHAPTERS.length;i++){if(CHAPTERS[i].t<=t)cur=i;else break;}
+  chapterLabel.textContent=cur>=0?(cur+1)+'章':'—';
+  document.querySelectorAll('.chapter-btn').forEach((b,i)=>b.classList.toggle('current',i===cur));
+}
+audio.addEventListener('timeupdate',updateChapter);
+audio.addEventListener('seeked',updateChapter);
+pillChapter.addEventListener('click',()=>{
+  chapterPanel.classList.toggle('open');
+  pillChapter.classList.toggle('active',chapterPanel.classList.contains('open'));
+  if(chapterPanel.classList.contains('open'))sleepPanel.classList.remove('open');
+});
+const sleepOptions=[5,10,15,20,30,45,60,90];
+sleepOptions.forEach(m=>{
+  const btn=document.createElement('button');btn.className='sleep-btn';btn.textContent=m+'分';
+  btn.addEventListener('click',()=>setSleep(m,btn));sleepGrid.appendChild(btn);
+});
+function setSleep(minutes,btn){
+  clearSleepTimer();
+  if(activeSleepBtn===btn){activeSleepBtn=null;pillSleep.classList.remove('active');return;}
+  activeSleepBtn=btn;
+  document.querySelectorAll('.sleep-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');pillSleep.classList.add('active');
+  sleepEndTime=Date.now()+minutes*60000;
+  sleepRemaining.classList.add('visible');updateSleepDisplay();
+  sleepInterval=setInterval(updateSleepDisplay,1000);
+  sleepTimer=setTimeout(()=>{audio.pause();clearSleepTimer();pillSleep.classList.remove('active');},minutes*60000);
+}
+function updateSleepDisplay(){
+  const ms=sleepEndTime-Date.now();if(ms<=0){sleepRemaining.textContent='';return;}
+  const m=Math.floor(ms/60000),s=Math.floor((ms%60000)/1000);
+  sleepRemaining.textContent='残り '+m+':'+String(s).padStart(2,'0');
+}
+function clearSleepTimer(){
+  clearTimeout(sleepTimer);clearInterval(sleepInterval);
+  sleepTimer=null;sleepInterval=null;sleepEndTime=null;
+  sleepRemaining.classList.remove('visible');sleepRemaining.textContent='';
+  document.querySelectorAll('.sleep-btn').forEach(b=>b.classList.remove('active'));
+  activeSleepBtn=null;
+}
+pillSleep.addEventListener('click',()=>{
+  sleepPanel.classList.toggle('open');
+  pillSleep.classList.toggle('active',sleepPanel.classList.contains('open')&&!sleepTimer);
+  if(sleepPanel.classList.contains('open'))chapterPanel.classList.remove('open');
+});
+function setupMediaSession(){
+  if(!('mediaSession' in navigator))return;
+  navigator.mediaSession.metadata=new MediaMetadata({title:'ITストラテジスト午前2 頻出用語 完全版',artist:'ずんだもん',album:'IT Strategist 対策'});
+  for(const[action,handler]of[['play',()=>audio.play()],['pause',()=>audio.pause()],['seekbackward',()=>seek(-10)],['seekforward',()=>seek(10)],['previoustrack',()=>seek(-10)],['nexttrack',()=>seek(10)],['stop',()=>{audio.pause();audio.currentTime=0;}]]){
+    try{navigator.mediaSession.setActionHandler(action,handler);}catch{}
+  }
+  function up(){if(!audio.duration||!isFinite(audio.duration))return;try{navigator.mediaSession.setPositionState({duration:audio.duration,playbackRate:audio.playbackRate,position:audio.currentTime});}catch{}}
+  audio.addEventListener('timeupdate',up);audio.addEventListener('loadedmetadata',up);
+}
+function getCueIdx(t){
+  let lo=0,hi=CUES.length-1,result=-1;
+  while(lo<=hi){const mid=(lo+hi)>>1;if(CUES[mid].t<=t){result=mid;lo=mid+1;}else hi=mid-1;}
+  return result;
+}
+const lyricText=document.getElementById('lyric-text');let lastCueIdx=-1;
+function updateLyric(){
+  if(!audio.duration||!isFinite(audio.duration))return;
+  const idx=getCueIdx(audio.currentTime);
+  if(idx===lastCueIdx)return;lastCueIdx=idx;
+  if(idx<0||!CUES[idx].text){lyricText.textContent='再生すると表示されます';lyricText.classList.add('placeholder');}
+  else{lyricText.textContent=CUES[idx].text;lyricText.classList.remove('placeholder');}
+}
+audio.addEventListener('timeupdate',updateLyric);
+audio.addEventListener('seeked',updateLyric);
+function formatTime(s){
+  if(!s||isNaN(s))return'0:00';
+  const m=Math.floor(s/60),sec=Math.floor(s%60);
+  return m+':'+String(sec).padStart(2,'0');
+}
+</script>
+</body>
+</html>
